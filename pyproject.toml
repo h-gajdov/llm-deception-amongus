@@ -109,6 +109,7 @@ testpaths = ["tests"]
 addopts = "-q --strict-markers"
 markers = [
     "ollama: tests that require a running Ollama server (deselect with -m 'not ollama')",
+    "openai: tests that require an OpenAI API key (deselect with -m 'not openai')",
     "network: tests that require network access (deselect with -m 'not network')",
 ]
 

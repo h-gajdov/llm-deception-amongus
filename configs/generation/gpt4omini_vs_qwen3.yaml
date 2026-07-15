@@ -1,0 +1,36 @@
+
+
+experiment_name: gpt4omini_vs_qwen3
+num_games: 20
+seed: 0
+output_dir: expt-logs
+log_level: INFO
+write_compact_logs: true
+
+game:
+  num_players: 7
+  num_impostors: 2
+  num_common_tasks: 1
+  num_short_tasks: 1
+  num_long_tasks: 1
+  discussion_rounds: 3
+  max_num_buttons: 2
+  kill_cooldown: 3
+  max_timesteps: 50
+
+agent:
+  impostor_backend: openai
+  crewmate_backend: ollama
+  impostor_llm_choices: ["gpt-4o-mini"]
+  crewmate_llm_choices: ["qwen3:8b"]
+  ollama:
+    model: qwen3:8b
+    host: http://localhost:11434
+    max_tokens: 1024
+    think: false
+  openai:
+    model: gpt-4o-mini
+    base_url: https://api.openai.com/v1
+    api_key_env: OPENAI_API_KEY
+    temperature: 0.7
+    max_tokens: 1024

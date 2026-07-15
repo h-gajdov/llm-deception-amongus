@@ -60,6 +60,25 @@ class OllamaConfig(BaseModel):
     max_retries: int = Field(default=2, ge=0)
 
 
+class OpenAIConfig(BaseModel):
+    pass
+
+    model_config = ConfigDict(extra="forbid")
+
+    model: str = "gpt-4o-mini"
+    base_url: str = "https://api.openai.com/v1"
+    api_key_env: str = "OPENAI_API_KEY"
+    temperature: float = Field(default=0.7, ge=0.0, le=2.0)
+    top_p: float = Field(default=0.9, ge=0.0, le=1.0)
+    max_tokens: int = Field(default=1024, ge=1)
+    request_timeout_s: float = Field(default=120.0, gt=0.0)
+    max_retries: int = Field(default=3, ge=0)
+
+
+                                                                            
+BACKENDS = ("ollama", "openai", "scripted")
+
+
 class AgentConfig(BaseModel):
     pass
 
@@ -70,6 +89,16 @@ class AgentConfig(BaseModel):
     impostor_llm_choices: list[str] = Field(default_factory=lambda: ["qwen3:8b"])
     crewmate_llm_choices: list[str] = Field(default_factory=lambda: ["qwen3:8b"])
     ollama: OllamaConfig = Field(default_factory=OllamaConfig)
+    openai: OpenAIConfig = Field(default_factory=OpenAIConfig)
+
+    @model_validator(mode="after")
+    def _check_backends(self) -> AgentConfig:
+        pass
+        for backend in (self.impostor_backend, self.crewmate_backend):
+            if backend not in BACKENDS:
+                msg = f"Unknown backend {backend!r}; expected one of {BACKENDS}."
+                raise ValueError(msg)
+        return self
 
 
 class GenerationConfig(BaseModel):
@@ -102,9 +131,11 @@ def load_config(path: str | Path, model: type[T] = GenerationConfig) -> T:
 
 
 __all__ = [
+    "BACKENDS",
     "AgentConfig",
     "GameConfig",
     "GenerationConfig",
     "OllamaConfig",
+    "OpenAIConfig",
     "load_config",
 ]

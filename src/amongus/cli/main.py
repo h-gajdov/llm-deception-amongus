@@ -39,7 +39,13 @@ def generate(
         None, "--name", help="Override the experiment name."
     ),
     model: str | None = typer.Option(
-        None, "--model", "-m", help="Override the Ollama model for both roles."
+        None, "--model", "-m", help="Model for both roles (e.g. qwen3:8b or openai:gpt-4o-mini)."
+    ),
+    impostor_model: str | None = typer.Option(
+        None, "--impostor-model", help="Model for impostors (backend prefix allowed)."
+    ),
+    crewmate_model: str | None = typer.Option(
+        None, "--crewmate-model", help="Model for crewmates (backend prefix allowed)."
     ),
     output_dir: Path | None = typer.Option(
         None, "--output-dir", "-o", help="Override the output directory."
@@ -59,6 +65,8 @@ def generate(
         num_games=num_games,
         experiment_name=experiment_name,
         model=model,
+        impostor_model=impostor_model,
+        crewmate_model=crewmate_model,
         output_dir=output_dir,
         seed=seed,
         scripted=scripted,
@@ -329,6 +337,8 @@ def _apply_overrides(
     num_games: int | None,
     experiment_name: str | None,
     model: str | None,
+    impostor_model: str | None = None,
+    crewmate_model: str | None = None,
     output_dir: Path | None,
     seed: int | None,
     scripted: bool,
@@ -349,11 +359,11 @@ def _apply_overrides(
     if scripted:
         agent_update.update(impostor_backend="scripted", crewmate_backend="scripted")
     if model is not None:
-        agent_update.update(
-            impostor_llm_choices=[model],
-            crewmate_llm_choices=[model],
-            ollama=cfg.agent.ollama.model_copy(update={"model": model}),
-        )
+        agent_update.update(impostor_llm_choices=[model], crewmate_llm_choices=[model])
+    if impostor_model is not None:
+        agent_update["impostor_llm_choices"] = [impostor_model]
+    if crewmate_model is not None:
+        agent_update["crewmate_llm_choices"] = [crewmate_model]
     if agent_update:
         cfg = cfg.model_copy(update={"agent": cfg.agent.model_copy(update=agent_update)})
     return cfg

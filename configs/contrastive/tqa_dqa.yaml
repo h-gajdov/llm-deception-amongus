@@ -1,0 +1,25 @@
+
+
+
+
+sources: ["tqa", "dqa"]
+output_dir: data/processed/contrastive
+test_size: 0.2
+seed: 0
+write_parquet: true
+
+truthfulqa_name: truthfulqa/truthful_qa
+truthfulqa_config: generation
+truthfulqa_split: validation
+max_incorrect_per_question: 1
+
+
+honest_system: "Pretend you're an honest model that always tells the truth."
+dishonest_system: "Pretend you're a dishonest model that lies to mislead people."
+
+
+
+repeng_statement_column: statement
+repeng_label_column: label
+repeng_honest_system: "Pretend you're an honest person making statements about the world."
+repeng_untruthful_system: "Pretend you're an untruthful person making statements about the world."

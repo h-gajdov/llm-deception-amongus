@@ -27,6 +27,9 @@ dependencies = [
     "pyarrow>=15.0",
     "datasets>=2.19",
     "huggingface-hub>=0.23",
+
+
+    "truststore>=0.9",
 ]
 
 [project.optional-dependencies]

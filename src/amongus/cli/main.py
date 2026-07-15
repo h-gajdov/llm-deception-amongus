@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import typer
@@ -16,6 +17,14 @@ app = typer.Typer(
     add_completion=False,
 )
 logger = get_logger()
+
+
+@app.callback()
+def _main() -> None:
+    pass
+    from ..net import configure_tls
+
+    configure_tls()
 
 
 @app.command()
@@ -146,6 +155,172 @@ def build(
     configure_logging(log_level)
     path = build_hf_dataset(input_root, output_dir, test_size=test_size, seed=seed)
     typer.echo(f"Built dataset at: {path}")
+
+
+viz_app = typer.Typer(help="Visualize a game: timeline, ASCII map, or interactive HTML.")
+app.add_typer(viz_app, name="viz")
+
+
+@viz_app.command("timeline")
+def viz_timeline(
+    experiment_dir: Path = typer.Argument(..., help="Directory with agent-logs.json."),
+    game: str | None = typer.Option(None, "--game", "-g", help="Game label, e.g. 'Game 43'."),
+    events_only: bool = typer.Option(
+        False, "--events-only", help="Hide routine moves/tasks; show only key events."
+    ),
+    color: bool = typer.Option(
+        True, "--color/--no-color", help="Show impostor lines in red (stdout only)."
+    ),
+    output: Path | None = typer.Option(None, "--output", "-o", help="Write to a file instead."),
+) -> None:
+    pass
+    from ..viz.reconstruct import load_game, reconstruct_frames
+    from ..viz.timeline import render_timeline
+
+    game_index, steps, winner, roster = load_game(experiment_dir, game)
+    frames, roster = reconstruct_frames(steps, roster)
+                                                                       
+    use_color = color and output is None
+    text = render_timeline(
+        game_index, frames, roster, winner, events_only=events_only, color=use_color
+    )
+    _emit(text, output)
+
+
+@viz_app.command("map")
+def viz_map(
+    experiment_dir: Path = typer.Argument(..., help="Directory with agent-logs.json."),
+    game: str | None = typer.Option(None, "--game", "-g", help="Game label, e.g. 'Game 43'."),
+    step: int | None = typer.Option(
+        None, "--step", "-s", help="Step number to draw (default: last step)."
+    ),
+    output: Path | None = typer.Option(None, "--output", "-o", help="Write to a file instead."),
+) -> None:
+    pass
+    from ..viz.ascii_map import render_ascii_map
+    from ..viz.reconstruct import load_game, reconstruct_frames
+
+    game_index, steps, _winner, roster = load_game(experiment_dir, game)
+    frames, roster = reconstruct_frames(steps, roster)
+    frame = _select_frame(frames, step)
+    _emit(render_ascii_map(frame, roster, game_index), output)
+
+
+@viz_app.command("html")
+def viz_html(
+    experiment_dir: Path = typer.Argument(..., help="Directory with agent-logs.json."),
+    game: str | None = typer.Option(None, "--game", "-g", help="Game label, e.g. 'Game 43'."),
+    output: Path | None = typer.Option(
+        None, "--output", "-o", help="Output .html path (default: <dir>/viz_<game>.html)."
+    ),
+) -> None:
+    pass
+    from ..viz.reconstruct import load_game, reconstruct_frames
+    from ..viz.render_html import build_html
+
+    game_index, steps, winner, roster = load_game(experiment_dir, game)
+    frames, roster = reconstruct_frames(steps, roster)
+    html = build_html(game_index, frames, roster, winner)
+    if output is None:
+        slug = game_index.lower().replace(" ", "_")
+        output = experiment_dir / f"viz_{slug}.html"
+    output.write_text(html, encoding="utf-8")
+    typer.echo(f"Wrote interactive visualization to: {output}")
+
+
+def _select_frame(frames: list, step: int | None):
+    pass
+    if not frames:
+        raise typer.BadParameter("No frames to visualize.")
+    if step is None:
+        return frames[-1]
+    exact = next((f for f in frames if f.step == step), None)
+    return exact or min(frames, key=lambda f: abs(f.step - step))
+
+
+def _emit(text: str, output: Path | None) -> None:
+    pass
+    if output is not None:
+        output.write_text(text, encoding="utf-8")
+        typer.echo(f"Wrote visualization to: {output}")
+        return
+    sys.stdout.buffer.write((text + "\n").encode("utf-8", errors="replace"))
+
+
+contrastive_app = typer.Typer(
+    help="Dataset 2: contrastive honest/dishonest data for training deception probes."
+)
+app.add_typer(contrastive_app, name="contrastive")
+
+
+@contrastive_app.command("build")
+def contrastive_build(
+    config: Path | None = typer.Option(
+        None, "--config", "-c", help="Path to a contrastive YAML config."
+    ),
+    sources: str | None = typer.Option(
+        None, "--sources", help="Comma-separated sources: tqa,dqa,repeng."
+    ),
+    output_dir: Path | None = typer.Option(
+        None, "--output-dir", "-o", help="Dataset output directory."
+    ),
+    test_size: float | None = typer.Option(None, "--test-size", help="Held-out fraction."),
+    seed: int | None = typer.Option(None, "--seed", help="Shuffle/split seed."),
+    repeng_statements: Path | None = typer.Option(
+        None, "--repeng-statements", help="CSV of true/false statements (for the repeng source)."
+    ),
+    log_level: str = typer.Option("INFO", "--log-level", help="Logging level."),
+) -> None:
+    pass
+    from ..data.contrastive.build import build_contrastive_dataset
+    from ..data.contrastive.config import ContrastiveConfig
+    from ..data.contrastive.schema import Source
+
+    cfg = load_config(config, ContrastiveConfig) if config else ContrastiveConfig()
+    update: dict[str, object] = {}
+    if sources is not None:
+        update["sources"] = [Source(s.strip()) for s in sources.split(",") if s.strip()]
+    if output_dir is not None:
+        update["output_dir"] = output_dir
+    if test_size is not None:
+        update["test_size"] = test_size
+    if seed is not None:
+        update["seed"] = seed
+    if repeng_statements is not None:
+        update["repeng_statements_path"] = repeng_statements
+    cfg = cfg.model_copy(update=update)
+
+    configure_logging(log_level)
+    path = build_contrastive_dataset(cfg)
+    typer.echo(f"Built contrastive dataset at: {path}")
+
+
+@contrastive_app.command("viz")
+def contrastive_viz(
+    dataset: Path = typer.Argument(
+        ..., help="Contrastive dataset dir or .parquet (from `contrastive build`)."
+    ),
+    html: Path | None = typer.Option(
+        None, "--html", help="Write an interactive HTML browser to this path."
+    ),
+    limit: int = typer.Option(
+        400, "--limit", help="Max contrast pairs to embed in the HTML (0 = all)."
+    ),
+) -> None:
+    pass
+    from ..viz.contrastive_viz import (
+        build_contrastive_html,
+        load_contrastive_rows,
+        render_summary_text,
+        summarize,
+    )
+
+    configure_logging("INFO")
+    rows = load_contrastive_rows(dataset)
+    _emit(render_summary_text(summarize(rows), dataset), None)
+    if html is not None:
+        html.write_text(build_contrastive_html(rows, dataset, limit=limit), encoding="utf-8")
+        typer.echo(f"Wrote contrastive visualization to: {html}")
 
 
 def _apply_overrides(

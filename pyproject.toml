@@ -1,0 +1,114 @@
+[project]
+name = "among-us-sandbox"
+version = "0.1.0"
+description = "A research sandbox for measuring and detecting agentic deception in LLMs, based on the 'Among Us' paper (Golechha & Garriga-Alonso, NeurIPS 2025)."
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+license = { text = "MIT" }
+authors = [{ name = "Hristijan Gajdov" }]
+keywords = [
+    "llm",
+    "agentic-systems",
+    "deception",
+    "reinforcement-learning",
+    "multi-agent",
+    "among-us",
+]
+
+dependencies = [
+    "typer>=0.12",
+    "pydantic>=2.6",
+    "pydantic-settings>=2.2",
+    "pyyaml>=6.0",
+    "loguru>=0.7",
+    "tqdm>=4.66",
+    "httpx>=0.27",
+    "pandas>=2.2",
+    "pyarrow>=15.0",
+    "datasets>=2.19",
+    "huggingface-hub>=0.23",
+]
+
+[project.optional-dependencies]
+
+
+ml = [
+    "transformers>=4.41",
+    "torch>=2.2",
+    "scikit-learn>=1.4",
+    "numpy>=1.26",
+]
+dev = [
+    "ruff>=0.5",
+    "pyright>=1.1.360",
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+]
+
+[project.scripts]
+amongus = "amongus.cli.main:app"
+
+[project.urls]
+Paper = "https://arxiv.org/abs/2504.04072"
+Dataset = "https://huggingface.co/datasets/7vik/amongus"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/amongus"]
+
+
+
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "I",
+    "N",
+    "UP",
+    "B",
+    "C4",
+    "SIM",
+    "RUF",
+    "D",
+]
+ignore = [
+    "D203",
+    "D213",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D"]
+"src/amongus/cli/*" = ["B008"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.pyright]
+include = ["src", "tests"]
+pythonVersion = "3.10"
+typeCheckingMode = "standard"
+reportMissingTypeStubs = false
+venvPath = "."
+venv = ".venv"
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+markers = [
+    "ollama: tests that require a running Ollama server (deselect with -m 'not ollama')",
+    "network: tests that require network access (deselect with -m 'not network')",
+]
+
+[tool.coverage.run]
+source = ["amongus"]
+branch = true

@@ -1,0 +1,25 @@
+
+
+experiment_name: scripted_smoke
+num_games: 5
+seed: 0
+output_dir: expt-logs
+log_level: INFO
+write_compact_logs: true
+
+game:
+  num_players: 7
+  num_impostors: 2
+  num_common_tasks: 1
+  num_short_tasks: 1
+  num_long_tasks: 1
+  discussion_rounds: 3
+  max_num_buttons: 2
+  kill_cooldown: 3
+  max_timesteps: 50
+
+agent:
+  impostor_backend: scripted
+  crewmate_backend: scripted
+  impostor_llm_choices: ["scripted"]
+  crewmate_llm_choices: ["scripted"]

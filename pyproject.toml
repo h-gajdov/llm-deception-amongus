@@ -111,6 +111,7 @@ markers = [
     "ollama: tests that require a running Ollama server (deselect with -m 'not ollama')",
     "openai: tests that require an OpenAI API key (deselect with -m 'not openai')",
     "network: tests that require network access (deselect with -m 'not network')",
+    "ml: tests that require the ML extras and a downloadable model (deselect with -m 'not ml')",
 ]
 
 [tool.coverage.run]

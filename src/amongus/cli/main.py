@@ -331,6 +331,67 @@ def contrastive_viz(
         typer.echo(f"Wrote contrastive visualization to: {html}")
 
 
+probe_app = typer.Typer(help="Train linear deception probes on dataset 2 activations.")
+app.add_typer(probe_app, name="probe")
+
+
+@probe_app.command("train")
+def probe_train(
+    config: Path | None = typer.Option(
+        None, "--config", "-c", help="Path to a probe-training YAML config."
+    ),
+    dataset_dir: Path | None = typer.Option(
+        None, "--dataset-dir", help="Contrastive DatasetDict dir (from `contrastive build`)."
+    ),
+    output_dir: Path | None = typer.Option(
+        None, "--output-dir", "-o", help="Where to write probe.joblib and metrics.json."
+    ),
+    model: str | None = typer.Option(None, "--model", help="HF model id to probe."),
+    layers: str | None = typer.Option(
+        None, "--layers", help="Comma-separated layer indices (default: all)."
+    ),
+    pooling: str | None = typer.Option(None, "--pooling", help="Token pooling: last | mean."),
+    batch_size: int | None = typer.Option(None, "--batch-size", help="Prompts per forward pass."),
+    limit: int | None = typer.Option(None, "--limit", help="Cap examples per split (quick runs)."),
+    device: str | None = typer.Option(None, "--device", help="auto | cpu | cuda."),
+    log_level: str = typer.Option("INFO", "--log-level", help="Logging level."),
+) -> None:
+    pass
+    from ..probes.config import ProbeTrainConfig
+    from ..probes.train import train_probes
+
+    cfg = load_config(config, ProbeTrainConfig) if config else ProbeTrainConfig()
+    update: dict[str, object] = {}
+    if dataset_dir is not None:
+        update["dataset_dir"] = dataset_dir
+    if output_dir is not None:
+        update["output_dir"] = output_dir
+    if model is not None:
+        update["model_name"] = model
+    if layers is not None:
+        update["layers"] = [int(x.strip()) for x in layers.split(",") if x.strip()]
+    if pooling is not None:
+        update["pooling"] = pooling
+    if batch_size is not None:
+        update["batch_size"] = batch_size
+    if limit is not None:
+        update["limit"] = limit
+    if device is not None:
+        update["device"] = device
+    cfg = cfg.model_copy(update=update)
+
+    configure_logging(log_level)
+    result = train_probes(cfg)
+    best = result.best()
+    typer.echo(
+        f"Trained probes on {result.n_train} examples "
+        f"({result.model_name}, pooling={result.pooling}).\n"
+        f"Best layer {best.layer}: acc={best.accuracy:.3f} f1={best.f1:.3f} "
+        f"auroc={'n/a' if best.auroc is None else f'{best.auroc:.3f}'}\n"
+        f"Saved probe -> {result.probe_path}\nMetrics -> {result.metrics_path}"
+    )
+
+
 def _apply_overrides(
     cfg: GenerationConfig,
     *,

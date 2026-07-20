@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+import json
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class PlayerLog(BaseModel):
@@ -26,6 +28,17 @@ class Interaction(BaseModel):
     prompt: dict[str, str] = Field(default_factory=dict)
     response: dict[str, str] = Field(default_factory=dict)
     full_response: str = ""
+
+    @field_validator("prompt", "response", mode="before")
+    @classmethod
+    def _stringify_values(cls, value: object) -> object:
+        pass
+        if not isinstance(value, dict):
+            return value
+        return {
+            key: item if isinstance(item, str) else json.dumps(item, ensure_ascii=False)
+            for key, item in value.items()
+        }
 
 
 class StepLog(BaseModel):

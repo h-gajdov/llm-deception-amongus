@@ -351,9 +351,19 @@ def probe_train(
         None, "--layers", help="Comma-separated layer indices (default: all)."
     ),
     pooling: str | None = typer.Option(None, "--pooling", help="Token pooling: last | mean."),
-    batch_size: int | None = typer.Option(None, "--batch-size", help="Prompts per forward pass."),
+    batch_size: int | None = typer.Option(
+        None, "--batch-size", help="Prompts per forward pass (extraction)."
+    ),
     limit: int | None = typer.Option(None, "--limit", help="Cap examples per split (quick runs)."),
     device: str | None = typer.Option(None, "--device", help="auto | cpu | cuda."),
+    load_in_4bit: bool = typer.Option(
+        False, "--load-in-4bit", help="Quantize base model to 4-bit."
+    ),
+    load_in_8bit: bool = typer.Option(
+        False, "--load-in-8bit", help="Quantize base model to 8-bit."
+    ),
+    wandb: bool = typer.Option(False, "--wandb", help="Enable Weights & Biases tracking."),
+    mlflow: bool = typer.Option(False, "--mlflow", help="Enable MLflow tracking."),
     log_level: str = typer.Option("INFO", "--log-level", help="Logging level."),
 ) -> None:
     pass
@@ -361,24 +371,21 @@ def probe_train(
     from ..probes.train import train_probes
 
     cfg = load_config(config, ProbeTrainConfig) if config else ProbeTrainConfig()
-    update: dict[str, object] = {}
-    if dataset_dir is not None:
-        update["dataset_dir"] = dataset_dir
-    if output_dir is not None:
-        update["output_dir"] = output_dir
-    if model is not None:
-        update["model_name"] = model
-    if layers is not None:
-        update["layers"] = [int(x.strip()) for x in layers.split(",") if x.strip()]
-    if pooling is not None:
-        update["pooling"] = pooling
-    if batch_size is not None:
-        update["batch_size"] = batch_size
-    if limit is not None:
-        update["limit"] = limit
-    if device is not None:
-        update["device"] = device
-    cfg = cfg.model_copy(update=update)
+    cfg = _override_probe_config(
+        cfg,
+        dataset_dir=dataset_dir,
+        output_dir=output_dir,
+        model=model,
+        layers=layers,
+        pooling=pooling,
+        batch_size=batch_size,
+        limit=limit,
+        device=device,
+        load_in_4bit=load_in_4bit,
+        load_in_8bit=load_in_8bit,
+        wandb=wandb,
+        mlflow=mlflow,
+    )
 
     configure_logging(log_level)
     result = train_probes(cfg)
@@ -390,6 +397,44 @@ def probe_train(
         f"auroc={'n/a' if best.auroc is None else f'{best.auroc:.3f}'}\n"
         f"Saved probe -> {result.probe_path}\nMetrics -> {result.metrics_path}"
     )
+
+
+def _override_probe_config(cfg, **flags):                                
+    pass
+    model_update: dict[str, object] = {}
+    if flags["model"] is not None:
+        model_update["name"] = flags["model"]
+    if flags["device"] is not None:
+        model_update["device"] = flags["device"]
+    if flags["load_in_4bit"] or flags["load_in_8bit"]:
+        model_update["quantization"] = cfg.model.quantization.model_copy(
+            update={"load_in_4bit": flags["load_in_4bit"], "load_in_8bit": flags["load_in_8bit"]}
+        )
+    if model_update:
+        cfg = cfg.model_copy(update={"model": cfg.model.model_copy(update=model_update)})
+
+    if flags["wandb"] or flags["mlflow"]:
+        tracking = cfg.tracking.model_copy()
+        if flags["wandb"]:
+            tracking.wandb = tracking.wandb.model_copy(update={"enabled": True})
+        if flags["mlflow"]:
+            tracking.mlflow = tracking.mlflow.model_copy(update={"enabled": True})
+        cfg = cfg.model_copy(update={"tracking": tracking})
+
+    top: dict[str, object] = {}
+    if flags["dataset_dir"] is not None:
+        top["dataset_dir"] = flags["dataset_dir"]
+    if flags["output_dir"] is not None:
+        top["output_dir"] = flags["output_dir"]
+    if flags["layers"] is not None:
+        top["layers"] = [int(x.strip()) for x in flags["layers"].split(",") if x.strip()]
+    if flags["pooling"] is not None:
+        top["pooling"] = flags["pooling"]
+    if flags["batch_size"] is not None:
+        top["extraction_batch_size"] = flags["batch_size"]
+    if flags["limit"] is not None:
+        top["limit"] = flags["limit"]
+    return cfg.model_copy(update=top)
 
 
 def _apply_overrides(

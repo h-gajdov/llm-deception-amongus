@@ -1,0 +1,54 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+dataset_dir: data/processed/contrastive
+output_dir: data/probes/gpt2
+
+model:
+  name: gpt2
+  device: auto
+  dtype: auto
+
+
+
+
+use_chat_template: false
+
+
+
+layers: null
+pooling: last
+max_length: 512
+extraction_batch_size: 16
+
+probe:
+  epochs: 200
+  lr: 0.001
+  weight_decay: 0.001
+  batch_size: 64
+  standardize: true
+  log_every: 10
+
+tracking:
+  wandb:
+    enabled: true
+    project: amongus-probes
+    run_name: gpt2
+    mode: online
+  mlflow:
+    enabled: true
+    experiment: amongus-probes
+    run_name: gpt2
+
+
+seed: 0

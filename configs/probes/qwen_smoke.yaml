@@ -1,0 +1,43 @@
+
+
+
+
+
+
+
+
+
+dataset_dir: data/processed/contrastive
+output_dir: data/probes/qwen_smoke
+
+model:
+  name: Qwen/Qwen2.5-0.5B-Instruct
+  device: auto
+  dtype: auto
+
+
+layers: [4, 8, 12]
+pooling: last
+max_length: 384
+extraction_batch_size: 8
+use_chat_template: true
+
+probe:
+  epochs: 100
+  lr: 0.001
+  weight_decay: 0.001
+  batch_size: 32
+  standardize: true
+  log_every: 5
+
+tracking:
+  wandb:
+    enabled: false
+  mlflow:
+    enabled: true
+    tracking_uri: file:./mlruns
+    experiment: amongus-probes-smoke
+    run_name: qwen-0.5b-smoke
+
+limit: 80
+seed: 0

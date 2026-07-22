@@ -17,10 +17,14 @@ htmlcov/
 data/raw/
 data/interim/
 data/processed/
+data/probes/
 outputs/
 expt-logs/
 *.parquet
 *.arrow
+
+mlruns/
+wandb/
 
 logs/
 *.log

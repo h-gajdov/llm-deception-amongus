@@ -32,12 +32,15 @@ probe:
 
 tracking:
   wandb:
-    enabled: false
+    enabled: true
+    project: amongus-probes
+    run_name: qwen
+    mode: online
   mlflow:
     enabled: true
     tracking_uri: file:./mlruns
     experiment: amongus-probes-smoke
     run_name: qwen-0.5b-smoke
 
-limit: 80
+
 seed: 0

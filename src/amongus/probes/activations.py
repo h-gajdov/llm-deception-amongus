@@ -126,13 +126,19 @@ def extract_activations(
     pooling: str,
     batch_size: int,
     max_length: int,
+    desc: str = "Extracting activations",
+    show_progress: bool = True,
 ) -> np.ndarray:
     pass
     import numpy as np
     import torch
+    from tqdm.auto import tqdm
 
     device = next(model.parameters()).device
     out_batches: list[np.ndarray] = []
+    progress = tqdm(
+        total=len(texts), desc=desc, unit="ex", disable=not show_progress or not texts
+    )
     for start in range(0, len(texts), batch_size):
         batch = texts[start : start + batch_size]
         enc = tokenizer(
@@ -149,7 +155,8 @@ def extract_activations(
         mask = enc["attention_mask"]          
         pooled = _pool(hidden, mask, pooling)             
         out_batches.append(pooled.to(torch.float32).cpu().numpy())
-        logger.debug("Extracted activations for {}/{} prompts.", start + len(batch), len(texts))
+        progress.update(len(batch))
+    progress.close()
     return np.concatenate(out_batches, axis=0)
 
 

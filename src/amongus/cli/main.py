@@ -399,6 +399,157 @@ def probe_train(
     )
 
 
+@probe_app.command("eval")
+def probe_eval(
+    probe_path: Path = typer.Option(
+        Path("data/probes/gpt2/probe.joblib"),
+        "--probe",
+        "-p",
+        help="Trained probe.joblib to evaluate (from `probe train`).",
+    ),
+    dataset_dir: Path = typer.Option(
+        Path("data/processed/amongus"),
+        "--dataset-dir",
+        help="Game-log DatasetDict dir (from `amongus build`).",
+    ),
+    split: str = typer.Option(
+        "all", "--split", help="Which split to score: all | train | test."
+    ),
+    text_mode: str = typer.Option(
+        "response",
+        "--text-mode",
+        help="Base-model input per row: 'response' (agent utterance) | 'full' (with context).",
+    ),
+    speak_only: bool = typer.Option(
+        False, "--speak-only", help="Only score discussion utterances (is_speak)."
+    ),
+    device: str = typer.Option("auto", "--device", help="auto | cpu | cuda."),
+    batch_size: int = typer.Option(16, "--batch-size", help="Prompts per forward pass."),
+    limit: int | None = typer.Option(None, "--limit", help="Cap rows (quick runs)."),
+    output: Path | None = typer.Option(
+        None, "--output", "-o", help="Report JSON path (default: <probe_dir>/eval_amongus.json)."
+    ),
+    reuse: bool = typer.Option(
+        True,
+        "--reuse/--no-reuse",
+        help="Reuse an existing report at the output path when its settings match "
+        "(skips re-running the model). Use --no-reuse to force recomputation.",
+    ),
+    log_level: str = typer.Option("INFO", "--log-level", help="Logging level."),
+) -> None:
+    pass
+    from ..probes.eval import evaluate_probe
+
+    if text_mode not in ("response", "full"):
+        raise typer.BadParameter("--text-mode must be 'response' or 'full'.")
+
+    configure_logging(log_level)
+    report = evaluate_probe(
+        probe_path=probe_path,
+        dataset_dir=dataset_dir,
+        split=split,
+        text_mode=text_mode,                          
+        speak_only=speak_only,
+        device=device,
+        batch_size=batch_size,
+        limit=limit,
+        output_path=output,
+        reuse=reuse,
+    )
+    typer.echo(
+        f"Evaluated {report.model_name} probe (layer {report.layer}) on "
+        f"{report.n} game-log rows [{split}].\n"
+        f"{report.summary_line()}\n"
+        f"Report -> {report.report_path}"
+    )
+
+
+@probe_app.command("compare")
+def probe_compare(
+    probes: list[Path] = typer.Option(
+        ...,
+        "--probe",
+        "-p",
+        help="A probe.joblib to include (repeat -p for each model to compare).",
+    ),
+    dataset_dir: Path = typer.Option(
+        Path("data/processed/amongus"),
+        "--dataset-dir",
+        help="Game-log DatasetDict dir (from `amongus build`).",
+    ),
+    output_dir: Path = typer.Option(
+        Path("data/probes/comparison"),
+        "--output-dir",
+        "-o",
+        help="Where to write comparison.html, comparison.json and per-probe reports.",
+    ),
+    labels: str | None = typer.Option(
+        None, "--labels", help="Comma-separated display labels (default: each probe's dir name)."
+    ),
+    fmt: str = typer.Option(
+        "png", "--format", help="Chart output: 'png' (matplotlib) | 'html' (interactive SVG)."
+    ),
+    split: str = typer.Option("all", "--split", help="Which split to score: all | train | test."),
+    text_mode: str = typer.Option(
+        "response",
+        "--text-mode",
+        help="Base-model input per row: 'response' (agent utterance) | 'full' (with context).",
+    ),
+    speak_only: bool = typer.Option(
+        False, "--speak-only", help="Only score discussion utterances (is_speak)."
+    ),
+    device: str = typer.Option("auto", "--device", help="auto | cpu | cuda."),
+    batch_size: int = typer.Option(16, "--batch-size", help="Prompts per forward pass."),
+    limit: int | None = typer.Option(None, "--limit", help="Cap rows per probe (quick runs)."),
+    reuse: bool = typer.Option(
+        True,
+        "--reuse/--no-reuse",
+        help="Reuse each probe's existing eval_amongus.json when its settings match "
+        "(skips re-running that model). Use --no-reuse to force recomputation.",
+    ),
+    log_level: str = typer.Option("INFO", "--log-level", help="Logging level."),
+) -> None:
+    pass
+    from ..probes.eval import compare_probes
+
+    if text_mode not in ("response", "full"):
+        raise typer.BadParameter("--text-mode must be 'response' or 'full'.")
+    if fmt not in ("png", "html"):
+        raise typer.BadParameter("--format must be 'png' or 'html'.")
+    label_list = (
+        [x.strip() for x in labels.split(",") if x.strip()] if labels is not None else None
+    )
+    if label_list is not None and len(label_list) != len(probes):
+        raise typer.BadParameter(
+            f"Got {len(label_list)} --labels for {len(probes)} --probe options."
+        )
+
+    configure_logging(log_level)
+    comparison = compare_probes(
+        probe_paths=probes,
+        dataset_dir=dataset_dir,
+        split=split,
+        text_mode=text_mode,                          
+        speak_only=speak_only,
+        device=device,
+        batch_size=batch_size,
+        limit=limit,
+        output_dir=output_dir,
+        labels=label_list,
+        fmt=fmt,                          
+        reuse=reuse,
+    )
+    typer.echo(f"Compared {len(comparison.reports)} probes on split [{split}]:")
+    for report in comparison.reports:
+        typer.echo(f"  {report.label:<20} {report.summary_line()}")
+    best = comparison.best()
+    typer.echo(
+        f"Best AUROC: {best.label} "
+        f"({'n/a' if best.auroc is None else f'{best.auroc:.3f}'}).\n"
+        f"Chart -> {comparison.chart_path}\nJSON  -> {comparison.json_path}"
+    )
+
+
 def _override_probe_config(cfg, **flags):                                
     pass
     model_update: dict[str, object] = {}

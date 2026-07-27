@@ -286,7 +286,7 @@ def train_probes(config: ProbeTrainConfig) -> ProbeTrainResult:
     model, tokenizer = load_model_and_tokenizer(config.model, device)
     layers = config.layers or default_layers(model)
 
-    def activations_for(rows: list[dict[str, Any]]) -> np.ndarray:
+    def activations_for(rows: list[dict[str, Any]], desc: str) -> np.ndarray:
         texts = [
             build_prompt(r, tokenizer, use_chat_template=config.use_chat_template) for r in rows
         ]
@@ -298,10 +298,11 @@ def train_probes(config: ProbeTrainConfig) -> ProbeTrainResult:
             pooling=config.pooling,
             batch_size=config.extraction_batch_size,
             max_length=config.max_length,
+            desc=desc,
         )
 
-    x_train = activations_for(train_rows)
-    x_test = activations_for(test_rows)
+    x_train = activations_for(train_rows, "Extracting train activations")
+    x_test = activations_for(test_rows, "Extracting test activations")
     y_train = np.array([int(r["label"]) for r in train_rows])
     y_test = np.array([int(r["label"]) for r in test_rows])
 

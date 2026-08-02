@@ -1,11 +1,17 @@
 
 
+
 experiment_name: qwen3_8b_selfplay
-num_games: 50
+num_games: 1
 seed: 0
 output_dir: expt-logs
 log_level: INFO
 write_compact_logs: true
+
+write_legacy_logs: true
+
+write_world_states: true
+annotate: true
 
 game:
   num_players: 7
@@ -16,13 +22,41 @@ game:
   discussion_rounds: 3
   max_num_buttons: 2
   kill_cooldown: 3
+
+
+
+  initial_kill_cooldown: 3
   max_timesteps: 50
+  map_name: skeld
+  meeting_order: seating
+  role_assignment: random
+  count_dead_crewmate_tasks: false
+  visibility:
+
+
+
+    mode: full_room
+    ghosts_observe: false
+    reveal_role_on_ejection: false
+    reveal_votes: true
+
+
+    body_report_reveals_killer: false
+    camera_rooms: ["Cafeteria", "Admin", "Upper Engine", "Electrical"]
 
 agent:
   impostor_backend: ollama
   crewmate_backend: ollama
   impostor_llm_choices: ["qwen3:8b"]
   crewmate_llm_choices: ["qwen3:8b"]
+
+
+  prompt_template: v2
+
+
+  role_prompt_mode: separate
+  personality_mode: none
+  max_parse_retries: 1
   ollama:
     model: qwen3:8b
     host: http://localhost:11434

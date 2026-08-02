@@ -1,0 +1,46 @@
+
+
+
+
+
+
+experiment_name: heuristic_validation
+num_games: 8
+seed: 0
+output_dir: expt-logs
+log_level: INFO
+write_compact_logs: true
+write_legacy_logs: true
+write_world_states: true
+annotate: true
+
+game:
+  num_players: 7
+  num_impostors: 2
+
+
+  num_common_tasks: 2
+  num_short_tasks: 4
+  num_long_tasks: 2
+  discussion_rounds: 2
+  max_num_buttons: 2
+  kill_cooldown: 3
+
+  initial_kill_cooldown: 3
+  max_timesteps: 40
+  map_name: skeld
+  meeting_order: seating
+  role_assignment: random
+  count_dead_crewmate_tasks: false
+  visibility:
+
+    mode: full_room
+
+agent:
+  impostor_backend: heuristic
+  crewmate_backend: heuristic
+  impostor_llm_choices: ["heuristic"]
+  crewmate_llm_choices: ["heuristic"]
+  prompt_template: v2
+  role_prompt_mode: separate
+  personality_mode: none

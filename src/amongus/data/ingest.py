@@ -8,6 +8,7 @@ from pathlib import Path
 
 from ..logging import get_logger
 from .records import GameSummary, StepLog
+from .schema_v2 import GAMES_FILE, TURNS_FILE, WORLD_STATES_FILE, GameRecord, TurnRecordModel
 
 logger = get_logger()
 
@@ -53,6 +54,56 @@ def find_experiment_dirs(root: str | Path) -> list[Path]:
     return sorted(dirs)
 
 
+def find_v2_dirs(root: str | Path) -> list[Path]:
+    pass
+    root = Path(root)
+    return sorted({p.parent for p in root.rglob(TURNS_FILE)})
+
+
+def iter_turns(experiment_dir: str | Path) -> Iterator[TurnRecordModel]:
+    pass
+    path = Path(experiment_dir) / TURNS_FILE
+    for line in _iter_jsonl(path):
+        yield TurnRecordModel.model_validate(line)
+
+
+def iter_games(experiment_dir: str | Path) -> Iterator[GameRecord]:
+    pass
+    path = Path(experiment_dir) / GAMES_FILE
+    for line in _iter_jsonl(path):
+        yield GameRecord.model_validate(line)
+
+
+def iter_world_states(experiment_dir: str | Path) -> Iterator[dict[str, object]]:
+    pass
+    yield from _iter_jsonl(Path(experiment_dir) / WORLD_STATES_FILE)
+
+
+def load_any(experiment_dir: str | Path) -> tuple[str, list[TurnRecordModel]]:
+    pass
+    directory = Path(experiment_dir)
+    if (directory / TURNS_FILE).exists():
+        return "2.0", list(iter_turns(directory))
+    legacy = directory / "agent-logs.json"
+    if legacy.exists():
+        from .migrate import migrate_step_log
+
+        return "1.0", [migrate_step_log(step) for step in iter_step_logs(legacy)]
+    msg = f"No turns.jsonl or agent-logs.json under {directory}"
+    raise FileNotFoundError(msg)
+
+
+def _iter_jsonl(path: Path) -> Iterator[dict[str, object]]:
+    pass
+    if not path.exists():
+        return
+    with path.open(encoding="utf-8") as handle:
+        for line in handle:
+            stripped = line.strip()
+            if stripped:
+                yield json.loads(stripped)
+
+
 def download_reference(
     dest: str | Path,
     *,
@@ -80,7 +131,12 @@ __all__ = [
     "REFERENCE_REPO_ID",
     "download_reference",
     "find_experiment_dirs",
+    "find_v2_dirs",
     "iter_game_summaries",
+    "iter_games",
     "iter_json_objects",
     "iter_step_logs",
+    "iter_turns",
+    "iter_world_states",
+    "load_any",
 ]

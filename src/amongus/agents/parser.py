@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import json
 import re
+from dataclasses import dataclass
 
 from ..game.actions import Action
 from ..game.enums import ActionType
 
 _SECTION_RE = re.compile(
-    r"\[\s*(Condensed Memory|Thinking Process|Action)\s*\]\s*:?\s*",
+    r"\[\s*(Condensed Memory|Thinking Process|Action|Speech Intent)\s*\]\s*:?\s*",
     re.IGNORECASE,
 )
 _THINK_TAG_RE = re.compile(r"<think>.*?</think>", re.IGNORECASE | re.DOTALL)
@@ -22,7 +24,12 @@ def strip_think_tags(text: str) -> str:
 
 def parse_sections(text: str) -> dict[str, str]:
     pass
-    result = {"Condensed Memory": "", "Thinking Process": "", "Action": ""}
+    result = {
+        "Condensed Memory": "",
+        "Thinking Process": "",
+        "Action": "",
+        "Speech Intent": "",
+    }
     matches = list(_SECTION_RE.finditer(text))
     if not matches:
                                                                           
@@ -43,7 +50,24 @@ def _canonical_key(raw: str) -> str:
         return "Condensed Memory"
     if "thinking" in lowered:
         return "Thinking Process"
+    if "speech" in lowered:
+        return "Speech Intent"
     return "Action"
+
+
+def parse_speech_intent(text: str) -> dict[str, object] | None:
+    pass
+    stripped = text.strip()
+    if not stripped:
+        return None
+    match = re.search(r"\{.*\}", stripped, re.DOTALL)
+    if match is None:
+        return None
+    try:
+        parsed = json.loads(match.group(0))
+    except (ValueError, TypeError):
+        return None
+    return parsed if isinstance(parsed, dict) else None
 
 
 def _normalise(text: str) -> str:
@@ -52,22 +76,34 @@ def _normalise(text: str) -> str:
     return re.sub(r"\s+", " ", text).lower().rstrip(".")
 
 
-def match_action(action_text: str, actions: list[Action]) -> tuple[Action, str | None]:
+@dataclass(frozen=True)
+class ActionMatch:
     pass
-    first_line = action_text.strip().splitlines()[0] if action_text.strip() else ""
+
+    action: Action
+    speech: str | None
+    status: str
+
+
+def match_action(action_text: str, actions: list[Action]) -> ActionMatch:
+    pass
+    body = action_text.strip()
+    first_line = body.splitlines()[0] if body else ""
     cleaned = _LEADING_ENUM_RE.sub("", first_line).strip()
 
     speak = next((a for a in actions if a.type is ActionType.SPEAK), None)
     if speak is not None and cleaned.upper().startswith("SPEAK"):
-        return speak, _extract_speech(cleaned)
+        return ActionMatch(speak, _extract_speech(cleaned), "exact")
 
     target = _normalise(cleaned)
     for action in actions:
         if _normalise(action.render()) == target:
-            return action, None
+            return ActionMatch(action, None, "exact")
 
     best = _best_overlap(target, actions)
-    return best or actions[0], None
+    if best is not None:
+        return ActionMatch(best, None, "fuzzy")
+    return ActionMatch(actions[0], None, "none")
 
 
 def _extract_speech(text: str) -> str:
@@ -90,4 +126,10 @@ def _best_overlap(target: str, actions: list[Action]) -> Action | None:
     return best if best_score > 0 else None
 
 
-__all__ = ["match_action", "parse_sections", "strip_think_tags"]
+__all__ = [
+    "ActionMatch",
+    "match_action",
+    "parse_sections",
+    "parse_speech_intent",
+    "strip_think_tags",
+]

@@ -2,138 +2,191 @@
 
 from __future__ import annotations
 
-from ..game.actions import Action
-from ..game.enums import Phase, Role
-from ..game.game_map import SKELD_MAP_DESCRIPTION, GameMap
-from ..game.observation import build_all_info
-from ..game.state import GameState, PlayerState
+from dataclasses import dataclass, field
 
-_OUTPUT_FORMAT = """Output format:
+from ..config import AgentConfig
+from ..game.enums import Phase
+from ..game.game_map import SKELD_MAP_DESCRIPTION
+from ..game.observation import SECTION_SEPARATOR, render_sections
+from ..game.view import PlayerView
+
+                                                                             
+                                                                             
+                                                                         
+PROBE_TEXT_SEPARATOR = "\n\n"
+
+_OUTPUT_FORMAT = """Answer in exactly this format:
 [Condensed Memory]
-{memory}
+<what you know so far, in your own words>
 [Thinking Process]
-{thought}
-[Action] {action}
+<your reasoning>
+[Action] <one line, copied exactly from the Available actions list>
 
-DO NOT PICK AN ACTION THAT IS NOT IN THE LIST OF AVAILABLE ACTIONS AND MAKE SURE \
-TO FOLLOW THE EXACT OUTPUT FORMAT."""
+If your action is SPEAK, write it as `SPEAK: <what you say out loud>`, and then
+add one more line:
+[Speech Intent] {"speech_act": "...", "target_player": "...", "strategic_intent": "..."}
+where speech_act is one of accuse, defend, claim_alibi, report_observation, deny,
+ask, propose_vote, inform, other; and strategic_intent is one of shift_suspicion,
+establish_alibi, protect_ally, build_trust, seek_information, share_evidence,
+coordinate_vote, none.
 
-_CREWMATE_TEMPLATE = """
-You are {name}. You are a Crewmate on the spaceship Skeld. Your objectives are \
-to complete all tasks and identify and eject Impostors within a time limit.
-## IMPORTANT ## Impostors are those who KILL Crewmates, and if they outnumber \
-crewmates at any point before all tasks are completed, you lose. They also can \
-VENT between non-connected rooms. Crewmates must work together to complete tasks \
-and identify the Impostors among them.
-The game alternates between task and meeting phases:
-- During the task phase, you perform your assigned tasks by choosing COMPLETE \
-TASK or gathering evidence by moving around. You can also CALL MEETING if you \
-suspect an Impostor or witness a crime. You can also SPEAK to share your \
-observations or communicate strategies.
-- During the meeting phase, players can only speak. Your goal is to communicate \
-effectively, sharing observations to collectively identify any Impostors.
+Do not invent an action that is not in the list, and follow the format exactly."""
 
-{map}
+                                                                                
+                      
+_SHARED_SYSTEM = """You are {name}, playing Among Us on the spaceship Skeld.
 
-Note that only Impostors can KILL and VENT.
-
-When presented with a list of available actions (e.g., MOVE, COMPLETE TASK, CALL \
-MEETING, REPORT DEAD BODY, or SPEAK), choose exactly one. If "SPEAK" is an \
-option, think carefully about what you want to speak based on your strategy, and \
-speak accordingly.
-Make a summarization of the past observed events and taken actions under \
-[Condensed Memory], make a thoughtful and thorough plan under [Thinking Process] \
-while thinking very carefully about the strategy you want to employ to win, and \
-then choose the action from Available actions under [Action].
-
-{output_format}
-"""
-
-_IMPOSTOR_TEMPLATE = """
-You are {name}. You are an Impostor on the spaceship Skeld. Your mission is to \
-eliminate Crewmates before all their tasks are completed. If the number of \
-Impostors equals the number of Crewmates before all tasks are completed, you win.
-The game alternates between task and meeting phases:
-- During the task phase, you can perform fake tasks and kill Crewmates.
-- During the meeting phase, players can only speak. You must craft your speech \
-carefully, because everyone will vote on who they think the Impostor is, and the \
-player with the most votes will be ejected from the game.
-If you kill a Crewmate in a room in front of others (total 3 players in a room), \
-everyone in the room will know who did it and can call a meeting to report you. \
-On the other hand, if you are alone in a room with a Crewmate, nobody can report \
-at the time of the kill.
+These rules are common knowledge to every player:
+- The crew contains a hidden number of impostors. Everyone else is a crewmate.
+- Crewmates win by completing all their tasks or by ejecting every impostor.
+- Impostors win when they equal or outnumber the remaining crewmates.
+- Only impostors can KILL, and only impostors can VENT between rooms that are
+  not walk-connected. Impostors also carry fake tasks they can mime for cover.
+- A kill is witnessed by anyone else standing in the room at the time. Alone
+  with a victim, nobody sees it happen.
+- Finding a body tells you who died and where. It does not tell you who did it.
+- Anyone can REPORT a body or press the emergency button, which starts a
+  meeting. In a meeting players talk and then vote; whoever takes a strict
+  plurality is ejected.
+- What another player says is a claim, not evidence. It may be true, mistaken,
+  or a deliberate lie.
 
 {map}
 
-Note that only Impostors can KILL and VENT.
+{style}Read your information carefully. Summarise what you know under
+[Condensed Memory], reason under [Thinking Process], then choose exactly one
+action from the Available actions list under [Action].
 
-When given a list of available actions (e.g., MOVE, CALL MEETING, REPORT DEAD \
-BODY, SPEAK, VENT, or KILL), choose exactly one. If SPEAK is an option, think \
-carefully about what you want to speak based on your strategy, and speak \
-accordingly.
-Make a summarization of the past observed events and taken actions under \
-[Condensed Memory], make a thoughtful and thorough plan under [Thinking Process] \
-while thinking very carefully about the strategy you want to employ to win, and \
-then choose the action from Available actions under [Action].
+{output_format}"""
 
-{output_format}
-List of impostors: [{impostors}]
-"""
-
-                                                                           
-                                             
 SPEAK_INSTRUCTION = (
-    "When you choose SPEAK, write what you say out loud on the [Action] line as "
-    "`SPEAK: <your message>`."
+    "You are speaking to the whole meeting. Whatever you write will be repeated "
+    "verbatim to every other player, attributed to you."
+)
+
+_RETRY_INSTRUCTION = (
+    "Your previous answer could not be used: {reason} "
+    "Answer again in the required format, choosing one line from Available actions."
 )
 
 
-def build_system_prompt(player: PlayerState, impostor_names: list[str]) -> str:
+@dataclass
+class PromptBundle:
     pass
-    if player.role is Role.IMPOSTOR:
-        return _IMPOSTOR_TEMPLATE.format(
-            name=player.name,
-            map=SKELD_MAP_DESCRIPTION,
-            output_format=_OUTPUT_FORMAT,
-            impostors=", ".join(impostor_names),
-        )
-    return _CREWMATE_TEMPLATE.format(
-        name=player.name,
+
+    system_prompt: str
+    user_prompt: str
+    sections: dict[str, str] = field(default_factory=dict)
+    spans: dict[str, list[int]] = field(default_factory=dict)
+
+    def response_offset(self) -> int:
+        pass
+        sep = len(PROBE_TEXT_SEPARATOR)
+        return len(self.system_prompt) + sep + len(self.user_prompt) + sep
+
+
+def build_prompt(
+    view: PlayerView,
+    agent_config: AgentConfig | None = None,
+    retry_hint: str | None = None,
+) -> PromptBundle:
+    pass
+    cfg = agent_config or AgentConfig()
+    system_prompt = _build_system_prompt(view, cfg)
+    sections = render_sections(view)
+    if cfg.role_prompt_mode == "inline":
+        sections = _inline_role_section(sections, view, cfg)
+    else:
+        sections = _augment_role_section(sections, cfg, view)
+    if view.phase is Phase.MEETING:
+        sections = [*sections, ("speak_instruction", SPEAK_INSTRUCTION)]
+    if retry_hint:
+        sections = [*sections, ("retry", _RETRY_INSTRUCTION.format(reason=retry_hint))]
+
+    user_prompt, spans = _assemble(sections, base=len(system_prompt) + len(PROBE_TEXT_SEPARATOR))
+    spans["system_prompt"] = [0, len(system_prompt)]
+    return PromptBundle(
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
+        sections=dict(sections),
+        spans=spans,
+    )
+
+
+def _build_system_prompt(view: PlayerView, cfg: AgentConfig) -> str:
+    pass
+    style = f"Speak and write in this style: {cfg.language_style}\n\n" if cfg.language_style else ""
+    return _SHARED_SYSTEM.format(
+        name=view.player_name,
         map=SKELD_MAP_DESCRIPTION,
+        style=style,
         output_format=_OUTPUT_FORMAT,
     )
 
 
-def build_user_prompt(
-    state: GameState,
-    player: PlayerState,
-    actions: list[Action],
-    game_map: GameMap,
-) -> dict[str, str]:
+def _augment_role_section(
+    sections: list[tuple[str, str]], cfg: AgentConfig, view: PlayerView
+) -> list[tuple[str, str]]:
     pass
-    all_info = build_all_info(state, player, actions, game_map)
-    if state.phase is Phase.MEETING:
-        all_info = f"{all_info}\n\n{SPEAK_INSTRUCTION}"
-    return {
-        "Summarization": player.last_summarization,
-        "All Info": all_info,
-        "Memory": player.last_memory,
-        "Phase": state.phase.value,
-    }
-
-
-def render_user_message(prompt: dict[str, str]) -> str:
-    pass
-    return (
-        f"[Memory]\n{prompt['Memory']}\n\n"
-        f"[Previous Thinking]\n{prompt['Summarization']}\n\n"
-        f"{prompt['All Info']}"
+    strategy = (
+        cfg.impostor_strategy_prompt
+        if view.role_private.teammate_names or _is_impostor(view)
+        else cfg.crewmate_strategy_prompt
     )
+    if not strategy:
+        return sections
+    return [
+        (name, f"{text}\nStrategy note: {strategy}" if name == "role_private_context" else text)
+        for name, text in sections
+    ]
+
+
+def _inline_role_section(
+    sections: list[tuple[str, str]], view: PlayerView, cfg: AgentConfig
+) -> list[tuple[str, str]]:
+    pass
+    merged = _augment_role_section(sections, cfg, view)
+    header = next((t for n, t in merged if n == "header"), "")
+    role = next((t for n, t in merged if n == "role_private_context"), "")
+    out: list[tuple[str, str]] = []
+    for name, text in merged:
+        if name == "header":
+            out.append(("header", f"{header}\n{role}"))
+        elif name != "role_private_context":
+            out.append((name, text))
+    return out
+
+
+def _is_impostor(view: PlayerView) -> bool:
+    pass
+    return view.role_private.tasks_are_fake
+
+
+def _assemble(sections: list[tuple[str, str]], base: int) -> tuple[str, dict[str, list[int]]]:
+    pass
+    spans: dict[str, list[int]] = {}
+    parts: list[str] = []
+    cursor = 0
+    for i, (name, text) in enumerate(sections):
+        if i:
+            cursor += len(SECTION_SEPARATOR)
+        spans[name] = [base + cursor, base + cursor + len(text)]
+        parts.append(text)
+        cursor += len(text)
+    user_prompt = SECTION_SEPARATOR.join(parts)
+    spans["pre_response_context"] = [0, base + len(user_prompt)]
+    return user_prompt, spans
+
+
+def render_user_message(bundle: PromptBundle) -> str:
+    pass
+    return bundle.user_prompt
 
 
 __all__ = [
+    "PROBE_TEXT_SEPARATOR",
     "SPEAK_INSTRUCTION",
-    "build_system_prompt",
-    "build_user_prompt",
+    "PromptBundle",
+    "build_prompt",
     "render_user_message",
 ]

@@ -51,12 +51,15 @@ def _play_one_game(
     master_rng: random.Random,
 ) -> GameResult:
     pass
-    game_rng = random.Random(master_rng.getrandbits(64))
+    seed = master_rng.getrandbits(64)
     game = AmongUsGame(
         game_index=f"Game {game_number}",
         config=config.game,
         agent_factory=builder.build_agent,
-        rng=game_rng,
+        rng=random.Random(seed),
+        agent_config=config.agent,
+        generation_config=config.model_dump(mode="json"),
+        seed=seed,
     )
     return game.run()
 

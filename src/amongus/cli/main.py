@@ -99,13 +99,21 @@ def play(
     )
     builder = AgentFactoryBuilder(agent_cfg, random.Random(seed))
     try:
-        game = AmongUsGame("Game 1", GameConfig(), builder.build_agent, random.Random(seed))
+        game = AmongUsGame(
+            "Game 1",
+            GameConfig(),
+            builder.build_agent,
+            random.Random(seed),
+            agent_config=agent_cfg,
+            seed=seed,
+        )
         result = game.run()
     finally:
         builder.close()
+    speech = sum(1 for t in result.turns if t.model_output.get("speech"))
     typer.echo(f"Winner: {'Impostors' if result.winner else 'Crewmates'}")
     typer.echo(f"Reason: {result.winner_reason}")
-    typer.echo(f"Logged steps: {len(result.steps)}")
+    typer.echo(f"Logged turns: {len(result.turns)} ({speech} utterances)")
 
 
 ingest_app = typer.Typer(help="Download and inspect reference/generated logs.")
@@ -153,16 +161,136 @@ def build(
     output_dir: Path = typer.Option(
         Path("data/processed/amongus"), "--output-dir", "-o", help="Dataset output dir."
     ),
-    test_size: float = typer.Option(0.2, "--test-size", help="Held-out fraction."),
+    schema: str = typer.Option(
+        "v2",
+        "--schema",
+        help="'v2' (game-level splits, statement labels) or 'v1' (legacy row split).",
+    ),
+    strategy: str = typer.Option(
+        "random",
+        "--strategy",
+        help="v2 split strategy: random | held_out_model | held_out_map | "
+        "held_out_prompt_template | held_out_strategy | held_out_deception_type | "
+        "held_out_game_configuration.",
+    ),
+    speak_only: bool = typer.Option(
+        False, "--speak-only", help="v2: keep only turns that produced an utterance."
+    ),
+    labelled_only: bool = typer.Option(
+        False,
+        "--labelled-only",
+        help="v2: keep only rows labelled truthful or deceptive (a usable binary target).",
+    ),
+    test_size: float = typer.Option(0.2, "--test-size", help="v1 only: held-out fraction."),
     seed: int = typer.Option(0, "--seed", help="Split seed."),
     log_level: str = typer.Option("INFO", "--log-level", help="Logging level."),
 ) -> None:
     pass
-    from ..data.build_hf import build_hf_dataset
+    from ..data.build_hf import build_hf_dataset, build_v2_dataset
 
     configure_logging(log_level)
-    path = build_hf_dataset(input_root, output_dir, test_size=test_size, seed=seed)
+    if schema not in ("v1", "v2"):
+        raise typer.BadParameter("--schema must be 'v1' or 'v2'.")
+    if schema == "v1":
+        path = build_hf_dataset(input_root, output_dir, test_size=test_size, seed=seed)
+    else:
+        path = build_v2_dataset(
+            input_root,
+            output_dir,
+            strategy=strategy,
+            seed=seed,
+            speak_only=speak_only,
+            labelled_only=labelled_only,
+        )
     typer.echo(f"Built dataset at: {path}")
+
+
+@app.command()
+def validate(
+    experiment_dir: Path = typer.Argument(..., help="Schema 2.0 experiment dir (turns.jsonl)."),
+    output: Path | None = typer.Option(
+        None, "--output", "-o", help="Also write the report as JSON to this path."
+    ),
+    log_level: str = typer.Option("WARNING", "--log-level", help="Logging level."),
+) -> None:
+    pass
+    import json as _json
+
+    from ..data.validate import validate_experiment
+
+    configure_logging(log_level)
+    report = validate_experiment(experiment_dir)
+    _emit(report.render(), None)
+    if output is not None:
+        output.write_text(
+            _json.dumps(report.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+        typer.echo(f"Wrote validation report to: {output}")
+    if not report.ok:
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def split(
+    experiment_dir: Path = typer.Argument(..., help="Schema 2.0 experiment dir (games.jsonl)."),
+    strategy: str = typer.Option(
+        "random",
+        "--strategy",
+        help="random | held_out_model | held_out_map | held_out_prompt_template | "
+        "held_out_strategy | held_out_deception_type | held_out_game_configuration.",
+    ),
+    seed: int = typer.Option(0, "--seed", help="Deterministic split seed."),
+    train: float = typer.Option(0.7, "--train", help="Train ratio (random strategy)."),
+    validation: float = typer.Option(0.15, "--validation", help="Validation ratio."),
+    test: float = typer.Option(0.15, "--test", help="Test ratio."),
+    holdout: str | None = typer.Option(
+        None, "--holdout", help="Comma-separated factor values to force into test."
+    ),
+    log_level: str = typer.Option("INFO", "--log-level", help="Logging level."),
+) -> None:
+    pass
+    from ..data.splits import build_splits, check_split_isolation, write_splits
+
+    configure_logging(log_level)
+    values = [v.strip() for v in holdout.split(",")] if holdout else None
+    assignment = build_splits(
+        experiment_dir,
+        strategy=strategy,                          
+        seed=seed,
+        ratios={"train": train, "validation": validation, "test": test},
+        holdout_values=values,
+    )
+    path = write_splits(experiment_dir, assignment)
+
+    from ..data.ingest import iter_turns
+
+    violations = check_split_isolation(assignment, list(iter_turns(experiment_dir)))
+    typer.echo(f"Split ({assignment.strategy}, seed={seed}): {assignment.counts()}")
+    if assignment.holdout_values:
+        typer.echo(f"Held out {assignment.factor} = {assignment.holdout_values}")
+    typer.echo(f"Wrote: {path}")
+    if violations:
+        for violation in violations:
+            typer.echo(f"[CRITICAL] {violation}")
+        raise typer.Exit(code=1)
+
+
+@app.command()
+def migrate(
+    source: Path = typer.Argument(..., help="v1 experiment dir containing agent-logs.json."),
+    dest: Path = typer.Option(..., "--dest", "-d", help="Directory to write turns.jsonl into."),
+    log_level: str = typer.Option("INFO", "--log-level", help="Logging level."),
+) -> None:
+    pass
+    from ..data.migrate import migrate_directory
+
+    configure_logging(log_level)
+    path = migrate_directory(source, dest)
+    typer.echo(f"Migrated to: {path}")
+    typer.echo(
+        "Note: migrated records carry no private state, world-state references or "
+        "claim annotations; their deception status is 'ambiguous'."
+    )
 
 
 viz_app = typer.Typer(help="Visualize a game: timeline, ASCII map, or interactive HTML.")
@@ -412,9 +540,7 @@ def probe_eval(
         "--dataset-dir",
         help="Game-log DatasetDict dir (from `amongus build`).",
     ),
-    split: str = typer.Option(
-        "all", "--split", help="Which split to score: all | train | test."
-    ),
+    split: str = typer.Option("all", "--split", help="Which split to score: all | train | test."),
     text_mode: str = typer.Option(
         "response",
         "--text-mode",
@@ -516,9 +642,7 @@ def probe_compare(
         raise typer.BadParameter("--text-mode must be 'response' or 'full'.")
     if fmt not in ("png", "html"):
         raise typer.BadParameter("--format must be 'png' or 'html'.")
-    label_list = (
-        [x.strip() for x in labels.split(",") if x.strip()] if labels is not None else None
-    )
+    label_list = [x.strip() for x in labels.split(",") if x.strip()] if labels is not None else None
     if label_list is not None and len(label_list) != len(probes):
         raise typer.BadParameter(
             f"Got {len(label_list)} --labels for {len(probes)} --probe options."

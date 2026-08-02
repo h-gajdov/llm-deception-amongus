@@ -14,6 +14,7 @@ from .llm.openai_client import OpenAIClient
 from .llm_agent import LLMAgent
 
 _SCRIPTED = "scripted"
+_HEURISTIC = "heuristic"
 
 
 class AgentFactoryBuilder:
@@ -35,10 +36,14 @@ class AgentFactoryBuilder:
         effective_backend, model = self._resolve(backend, choices)
         if effective_backend == _SCRIPTED:
             return ScriptedAgent()
+        if effective_backend == _HEURISTIC:
+            from .heuristic import HeuristicAgent
+
+            return HeuristicAgent(seed=self._rng.getrandbits(32))
         if effective_backend == "ollama":
-            return LLMAgent(self._ollama_client(model))
+            return LLMAgent(self._ollama_client(model), self._config)
         if effective_backend == "openai":
-            return LLMAgent(self._openai_client(model))
+            return LLMAgent(self._openai_client(model), self._config)
         msg = f"Unknown agent backend: {effective_backend!r}"                    
         raise ValueError(msg)
 
@@ -54,7 +59,7 @@ class AgentFactoryBuilder:
             return self._config.ollama.model
         if backend == "openai":
             return self._config.openai.model
-        return _SCRIPTED
+        return backend
 
     def _ollama_client(self, model: str) -> LLMClient:
         pass

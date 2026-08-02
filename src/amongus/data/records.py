@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -76,7 +77,10 @@ class GameSummary(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
-    config: dict[str, int] = Field(default_factory=dict)
+                                                                                 
+                                                                              
+                        
+    config: dict[str, Any] = Field(default_factory=dict)
     winner: int
     winner_reason: str
 

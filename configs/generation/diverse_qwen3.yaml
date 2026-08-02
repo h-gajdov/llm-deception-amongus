@@ -1,0 +1,89 @@
+
+
+
+
+
+
+
+experiment_name: diverse_qwen3
+num_games: 1
+seed: 1
+output_dir: expt-logs
+log_level: INFO
+write_compact_logs: true
+write_legacy_logs: true
+write_world_states: true
+annotate: true
+
+game:
+  num_players: 8
+  num_impostors: 2
+  num_common_tasks: 2
+  num_short_tasks: 2
+  num_long_tasks: 1
+  discussion_rounds: 3
+  max_num_buttons: 1
+  kill_cooldown: 4
+  initial_kill_cooldown: 4
+  max_timesteps: 60
+  map_name: skeld
+
+
+  meeting_order: reporter_first
+  role_assignment: random
+  visibility:
+    mode: noisy
+    kill_witness_probability: 0.8
+    kill_identification_probability: 0.7
+    vent_witness_probability: 0.7
+    vent_identification_probability: 0.6
+    movement_witness_probability: 0.7
+    task_witness_probability: 0.6
+    movement_visible_in_source_room: true
+    movement_visible_in_destination_room: true
+    ghosts_observe: false
+    reveal_role_on_ejection: false
+    reveal_votes: true
+    body_report_reveals_killer: false
+    cameras_enabled: true
+    camera_rooms:
+      - Cafeteria
+      - Admin
+      - Upper Engine
+      - Electrical
+    camera_shows_identity: true
+
+agent:
+  impostor_backend: ollama
+  crewmate_backend: ollama
+  impostor_llm_choices: ["qwen3:8b"]
+  crewmate_llm_choices: ["qwen3:8b"]
+  prompt_template: v2-personality
+  role_prompt_mode: separate
+  personality_mode: sampled
+  personalities:
+    - neutral and cooperative; reports observations directly
+    - cautious and quiet; rarely volunteers information
+    - talkative and assertive; pushes their interpretation of events
+    - analytical; reasons about timings, routes, and positions
+    - sceptical; questions claims before accepting them
+
+
+  impostor_strategy_prompt: >-
+    Blend in. Prefer kills with no witnesses, and keep your statements as close
+    to the truth as you can while still protecting yourself.
+  crewmate_strategy_prompt: >-
+    Share what you actually saw, and say clearly when you are guessing rather
+    than reporting.
+  language_style: "plain, conversational English; two or three sentences at most"
+  max_parse_retries: 2
+  ollama:
+    model: qwen3:8b
+    host: http://localhost:11434
+    temperature: 0.9
+    top_p: 0.95
+    num_ctx: 8192
+    max_tokens: 1024
+    think: false
+    request_timeout_s: 180.0
+    max_retries: 2

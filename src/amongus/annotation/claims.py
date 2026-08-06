@@ -8,12 +8,40 @@ from dataclasses import dataclass
 from .schema import Claim, ClaimType
 
                                                                                 
+                                     
 _TIME_REFERENCES: tuple[tuple[str, str], ...] = (
     (r"\bjust now\b|\bright now\b|\bcurrently\b", "current"),
     (r"\bearlier\b|\blast (?:round|meeting|turn)\b|\bbefore\b", "earlier"),
-    (r"\bthe whole (?:time|game)\b|\ball (?:game|round)\b", "whole_game"),
+    (
+        r"\bthe (?:whole|entire) (?:time|game|round|meeting)\b|\ball (?:game|round)\b"
+        r"|\bnever\b|\balways\b|\bat any point\b|\bthe whole way\b",
+        "whole_game",
+    ),
 )
 DEFAULT_TIME_REFERENCE = "previous_task_phase"
+
+                                                                               
+                                                                                
+                                                           
+_QUALIFIERS: tuple[tuple[str, str], ...] = (
+    (r"\bthe (?:whole|entire) (?:time|game|round|meeting)\b", "the entire time"),
+    (r"\bnever\b", "never"),
+    (r"\balways\b", "always"),
+    (r"\balone\b|\bby myself\b|\bon my own\b", "alone"),
+    (r"\bonly\b", "only"),
+    (r"\bbefore\b", "before"),
+    (r"\bafter\b", "after"),
+    (r"\bduring\b", "during"),
+    (r"\bthe whole time\b", "the whole time"),
+)
+
+                                                                           
+                                                                 
+_CLAUSE_SPLIT_RE = re.compile(
+    r"[;.!?]+\s+|\n+|,\s*(?:and|but|so|then|although|though|however|while)?\s*"
+    r"|\s+(?:and|but|so|then|although|though|however|while)\s+",
+    re.IGNORECASE,
+)
 
 
 @dataclass(frozen=True)
@@ -64,21 +92,35 @@ def time_reference(utterance: str) -> str:
     return DEFAULT_TIME_REFERENCE
 
 
+def qualifiers(text: str) -> list[str]:
+    pass
+    lowered = text.lower()
+    found = [label for pattern, label in _QUALIFIERS if re.search(pattern, lowered)]
+    return list(dict.fromkeys(found))
+
+
 def extract_claims(utterance: str, speaker: str, gazetteer: Gazetteer) -> list[Claim]:
     pass
     text = utterance.strip()
     if not text:
         return []
     claims: list[Claim] = []
+    seen: set[tuple[str, ...]] = set()
     when = time_reference(text)
     for sentence in _sentences(text):
-        claims.extend(_claims_in_sentence(sentence, speaker, gazetteer, when))
+        for claim in _claims_in_sentence(sentence, speaker, gazetteer, when):
+            key = _claim_key(claim)
+            if key in seen:
+                continue
+            seen.add(key)
+            claims.append(claim)
+    _resolve_pronoun_subjects(claims, speaker)
     if not claims:
         claims.append(
             Claim(
                 claim_type=ClaimType.OTHER,
                 text_span=text,
-                normalized_claim={"raw": text},
+                normalized_claim={"raw": text, "qualifiers": qualifiers(text)},
                 confidence=0.0,
                 resolution="unresolved",
                 notes="No checkable claim pattern matched; utterance preserved verbatim.",
@@ -93,17 +135,95 @@ def _sentences(text: str) -> list[str]:
     return [p.strip() for p in parts if p.strip()]
 
 
+def _clauses(sentence: str) -> list[str]:
+    pass
+    parts = [p.strip() for p in _CLAUSE_SPLIT_RE.split(sentence) if p and p.strip()]
+    return [p for p in parts if p != sentence]
+
+
 def _claims_in_sentence(sentence: str, speaker: str, gaz: Gazetteer, when: str) -> list[Claim]:
     pass
     out: list[Claim] = []
-    for extractor in _EXTRACTORS:
-        out.extend(extractor(sentence, speaker, gaz, when))
+    seen: set[tuple[str, ...]] = set()
+    for fragment in [*_clauses(sentence), sentence]:
+        local_when = _time_for(fragment, when)
+        local_qualifiers = qualifiers(fragment)
+        for extractor in _EXTRACTORS:
+            for claim in extractor(fragment, speaker, gaz, local_when):
+                key = _claim_key(claim)
+                if key in seen:
+                    continue
+                seen.add(key)
+                claim.normalized_claim.setdefault("qualifiers", local_qualifiers)
+                out.append(claim)
     return out
+
+
+def _resolve_pronoun_subjects(claims: list[Claim], speaker: str) -> None:
+    pass
+    antecedent: str | None = None
+    for claim in claims:
+        fields = claim.normalized_claim
+        if fields.get("pronoun_subject") and fields.get("subject") is None:
+            if antecedent is None:
+                claim.notes = "Pronoun subject with no antecedent in the utterance."
+            else:
+                fields["subject"] = antecedent
+                fields["subject_from_pronoun"] = True
+                claim.target = antecedent
+        for key in ("subject", "object"):
+            value = fields.get(key)
+            if isinstance(value, str) and value != speaker:
+                antecedent = value
+
+
+def _time_for(fragment: str, fallback: str) -> str:
+    pass
+    found = time_reference(fragment)
+    return found if found != DEFAULT_TIME_REFERENCE else fallback
+
+
+def _claim_key(claim: Claim) -> tuple[str, ...]:
+    pass
+    fields = claim.normalized_claim
+    return (
+        claim.claim_type.value,
+        str(claim.target),
+        *(
+            str(fields.get(name))
+            for name in (
+                "subject",
+                "object",
+                "location",
+                "denied_action",
+                "claimed_role",
+                "asserted_role",
+                "co_located_with",
+                "about",
+            )
+        ),
+    )
 
 
                                                                                
                                                                 
                                                                                
+                                                                              
+                                                                              
+                                                                                
+                                         
+_NEGATED_SIGHTING_RE = re.compile(
+    r"\b(?:did\s*n[o']?t|didnt|do\s*n[o']?t|dont|have\s*n[o']?t|havent|never|no)\s+"
+    r"(?:ever\s+)?(?:see|seen|saw|notice|spot|spotted|witness)\b",
+    re.IGNORECASE,
+)
+
+
+def _negated_before(sentence: str, index: int) -> bool:
+    pass
+    return bool(_NEGATED_SIGHTING_RE.search(sentence[:index]))
+
+
 def _kill_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) -> list[Claim]:
     pass
     player = gaz.player_pattern()
@@ -117,7 +237,7 @@ def _kill_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) -> list
     for match in pattern.finditer(sentence):
         killer = gaz.player(match.group("killer"))
         victim = gaz.player(match.group("victim"))
-        if killer is None or victim is None:
+        if killer is None or victim is None or _negated_before(sentence, match.start()):
             continue
         room = gaz.room(match.group("room")) if match.group("room") else None
         out.append(
@@ -149,7 +269,7 @@ def _vent_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) -> list
     out: list[Claim] = []
     for match in pattern.finditer(sentence):
         who = gaz.player(match.group("who"))
-        if who is None:
+        if who is None or _negated_before(sentence, match.start()):
             continue
         out.append(
             Claim(
@@ -206,6 +326,74 @@ def _self_location_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str
     return out
 
 
+def _negative_self_location_claims(
+    sentence: str, speaker: str, gaz: Gazetteer, when: str
+) -> list[Claim]:
+    pass
+    pattern = re.compile(
+        r"\bi\s+(?:was\s*n[o']?t|wasnt|am\s+not|'m\s+not|have\s*n[o']?t\s+been|havent\s+been"
+        r"|had\s*n[o']?t\s+been|did\s*n[o']?t\s+go|didnt\s+go|never\s+(?:was|went|been|entered))"
+        r"\s+(?:ever\s+|even\s+|anywhere\s+)?(?:in|at|to|into|near|inside)\s+(?:the\s+)?"
+        rf"(?P<room>{gaz.room_pattern()})",
+        re.IGNORECASE,
+    )
+    out: list[Claim] = []
+    for match in pattern.finditer(sentence):
+        room = gaz.room(match.group("room"))
+        if room is None:
+            continue
+        out.append(
+            Claim(
+                claim_type=ClaimType.NEGATIVE_LOCATION_CLAIM,
+                text_span=match.group(0),
+                normalized_claim={
+                    "subject": speaker,
+                    "location": room,
+                    "time_reference": when,
+                },
+                target=speaker,
+            )
+        )
+    return out
+
+
+def _task_observation_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) -> list[Claim]:
+    pass
+    player = gaz.player_pattern()
+    pattern = re.compile(
+        r"\bi\s+(?:saw|see|watched|spotted|observed)\s+"
+        rf"(?:(?P<who>{player})|(?P<pronoun>them|him|her|they|that player))\s+"
+        r"(?:\w+\s+){0,2}?"
+        r"(?:doing|do|complete|completing|finish|finishing|working\s+on|use|using|at)\s+"
+        r"(?:a\s+|the\s+|their\s+|his\s+|her\s+|my\s+)?(?:task|tasks|console|panel|wires|scan)"
+        rf"(?:\s+(?:in|at)\s+(?:the\s+)?(?P<room>{gaz.room_pattern()}))?",
+        re.IGNORECASE,
+    )
+    out: list[Claim] = []
+    for match in pattern.finditer(sentence):
+        if _negated_before(sentence, match.start()):
+            continue
+        who = gaz.player(match.group("who")) if match.group("who") else None
+        if who is None and not match.group("pronoun"):
+            continue
+        out.append(
+            Claim(
+                claim_type=ClaimType.TASK_OBSERVATION_CLAIM,
+                text_span=match.group(0),
+                normalized_claim={
+                    "subject": who,
+                    "observer": speaker,
+                    "pronoun_subject": match.group("pronoun") if who is None else None,
+                    "location": gaz.room(match.group("room")) if match.group("room") else None,
+                    "time_reference": when,
+                    "first_hand": True,
+                },
+                target=who,
+            )
+        )
+    return out
+
+
 def _other_location_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) -> list[Claim]:
     pass
     player = gaz.player_pattern()
@@ -219,6 +407,8 @@ def _other_location_claims(sentence: str, speaker: str, gaz: Gazetteer, when: st
         who = gaz.player(match.group("who"))
         room = gaz.room(match.group("room"))
         if who is None or room is None or who == speaker:
+            continue
+        if _negated_before(sentence, match.start()):
             continue
         first_hand = bool(match.group("saw"))
         out.append(
@@ -392,7 +582,8 @@ def _denial_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) -> li
     pass
     del gaz
     pattern = re.compile(
-        r"\bi\s+(?:did\s*n[o']?t|didnt|never|have\s+not|haven't)\s+"
+        r"\bi\s+(?:did\s*n[o']?t|didnt|do\s*n[o']?t|dont|never|have\s*n[o']?t|havent|"
+        r"have\s+never|would\s+never|did\s+not\s+ever)\s+(?:ever\s+|even\s+|once\s+)?"
         r"(?P<what>kill\w*|vent\w*|murder\w*)",
         re.IGNORECASE,
     )
@@ -443,9 +634,10 @@ def _ignorance_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) ->
     pass
     del gaz
     pattern = re.compile(
-        r"\bi\s+(?:did\s*n[o']?t|didnt|have\s*n[o']?t|havent|don'?t)\s+"
-        r"(?:see|seen|notice|witness|know)\s+(?:anything|anyone|nothing|much)"
-        r"|\bi\s+have\s+no\s+(?:information|evidence|idea)\b",
+        r"\bi\s+(?:did\s*n[o']?t|didnt|have\s*n[o']?t|havent|don'?t|never)\s+(?:ever\s+)?"
+        r"(?:see|saw|seen|notice|witness|know)\s+(?:anything|anyone|anybody|nothing|much)"
+        r"|\bi\s+(?:have|got)\s+no\s+(?:information|evidence|idea|clue)\b"
+        r"|\bi\s+saw\s+(?:nothing|nobody|no one)\b",
         re.IGNORECASE,
     )
     out: list[Claim] = []
@@ -461,6 +653,94 @@ def _ignorance_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) ->
     return out
 
 
+def _negative_observation_claims(
+    sentence: str, speaker: str, gaz: Gazetteer, when: str
+) -> list[Claim]:
+    pass
+    player = gaz.player_pattern()
+    pattern = re.compile(
+        r"\bi\s+(?:did\s*n[o']?t|didnt|do\s*n[o']?t|dont|have\s*n[o']?t|havent|never)\s+"
+        r"(?:ever\s+)?(?:see|saw|seen|notice|spot|spotted|witness)\s+"
+        rf"(?P<who>{player})"
+        rf"(?:\s+(?:in|at|near)\s+(?:the\s+)?(?P<room>{gaz.room_pattern()}))?",
+        re.IGNORECASE,
+    )
+    out: list[Claim] = []
+    for match in pattern.finditer(sentence):
+        who = gaz.player(match.group("who"))
+        if who is None:
+            continue
+        out.append(
+            Claim(
+                claim_type=ClaimType.NEGATIVE_OBSERVATION_CLAIM,
+                text_span=match.group(0),
+                normalized_claim={
+                    "subject": who,
+                    "observer": speaker,
+                    "location": gaz.room(match.group("room")) if match.group("room") else None,
+                    "time_reference": when,
+                },
+                target=who,
+            )
+        )
+    return out
+
+
+def _knowledge_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) -> list[Claim]:
+    pass
+    del gaz
+    pattern = re.compile(
+        r"\bi\s+(?:do\s*n[o']?t|dont|did\s*n[o']?t|didnt|can\s*n[o']?t|cant)\s+"
+        r"(?:know|tell|say)\s+who\s+(?P<about>killed|kills|did\s+it|the\s+impostor)"
+        r"|\bi\s+(?:have|got)\s+no\s+(?:idea|clue)\s+who\s+(?P<about2>killed|did\s+it|the\s+impostor)",
+        re.IGNORECASE,
+    )
+    out: list[Claim] = []
+    for match in pattern.finditer(sentence):
+        about_text = (match.group("about") or match.group("about2") or "").lower()
+        about = "impostor_identity" if "impostor" in about_text else "killer_identity"
+        out.append(
+            Claim(
+                claim_type=ClaimType.KNOWLEDGE_CLAIM,
+                text_span=match.group(0),
+                normalized_claim={"subject": speaker, "about": about, "time_reference": when},
+                target=speaker,
+            )
+        )
+    return out
+
+
+def _solitude_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) -> list[Claim]:
+    pass
+    pattern = re.compile(
+        r"\b(?:i\s+(?:was|am|'m|have\s+been|had\s+been|stayed|worked)\s+"
+        r"(?:all\s+|completely\s+|totally\s+|just\s+)?(?:alone|by\s+myself|on\s+my\s+own)"
+        r"|i\s+(?:was|am|'m)\s+the\s+only\s+(?:one|player|person)"
+        r"|(?:nobody|no\s*body|no\s+one|noone)\s+else\s+(?:was|were|is)?\s*"
+        r"(?:there|here|in\s+there|around|with\s+me)?"
+        r"|(?:nobody|no\s*body|no\s+one|noone)\s+(?:was\s+|were\s+)?"
+        r"(?:with\s+me|around\s+me|near\s+me|else)"
+        r"|there\s+(?:was|were)\s+(?:nobody|no\s+one|no\s+body)\s+else)"
+        rf"(?:\s+(?:in|at)\s+(?:the\s+)?(?P<room>{gaz.room_pattern()}))?",
+        re.IGNORECASE,
+    )
+    out: list[Claim] = []
+    for match in pattern.finditer(sentence):
+        out.append(
+            Claim(
+                claim_type=ClaimType.SOLITUDE_CLAIM,
+                text_span=match.group(0),
+                normalized_claim={
+                    "subject": speaker,
+                    "location": gaz.room(match.group("room")) if match.group("room") else None,
+                    "time_reference": when,
+                },
+                target=speaker,
+            )
+        )
+    return out
+
+
 _EXTRACTORS = (
     _kill_claims,
     _vent_claims,
@@ -470,10 +750,21 @@ _EXTRACTORS = (
     _defence_claims,
     _denial_claims,
     _task_claims,
+    _task_observation_claims,
     _ignorance_claims,
+    _negative_observation_claims,
+    _knowledge_claims,
+    _solitude_claims,
+    _negative_self_location_claims,
     _self_location_claims,
     _other_location_claims,
 )
 
 
-__all__ = ["DEFAULT_TIME_REFERENCE", "Gazetteer", "extract_claims", "time_reference"]
+__all__ = [
+    "DEFAULT_TIME_REFERENCE",
+    "Gazetteer",
+    "extract_claims",
+    "qualifiers",
+    "time_reference",
+]

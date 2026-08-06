@@ -36,6 +36,11 @@ class Decision:
     speech: str | None = None
     declared_speech: dict[str, object] | None = None
     parse_status: str = "valid"
+    requested_action: Action | None = None
+    requested_action_text: str = ""
+    requested_action_valid: bool = True
+    execution_source: str = "model"
+    fallback_reason: str | None = None
     attempts: list[dict[str, str]] = field(default_factory=list)
     validation_warnings: list[str] = field(default_factory=list)
     spans: dict[str, list[int]] = field(default_factory=dict)
@@ -80,6 +85,8 @@ class ScriptedAgent:
             full_response=rendered,
             speech=speech,
             parse_status="valid",
+            requested_action=action,
+            requested_action_text=rendered,
         )
 
 

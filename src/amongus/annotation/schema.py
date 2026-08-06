@@ -12,10 +12,16 @@ class ClaimType(str, Enum):
     LOCATION_CLAIM = "location_claim"
     pass
 
+    NEGATIVE_LOCATION_CLAIM = "negative_location_claim"
+    pass
+
     OTHER_LOCATION_CLAIM = "other_location_claim"
     pass
 
     OBSERVATION_CLAIM = "observation_claim"
+    pass
+
+    TASK_OBSERVATION_CLAIM = "task_observation_claim"
     pass
 
     KILL_WITNESS_CLAIM = "kill_witness_claim"
@@ -46,6 +52,15 @@ class ClaimType(str, Enum):
     pass
 
     IGNORANCE_CLAIM = "ignorance_claim"
+    pass
+
+    NEGATIVE_OBSERVATION_CLAIM = "negative_observation_claim"
+    pass
+
+    KNOWLEDGE_CLAIM = "knowledge_claim"
+    pass
+
+    SOLITUDE_CLAIM = "solitude_claim"
     pass
 
     VOTE_INTENT = "vote_intent"
@@ -139,6 +154,44 @@ class StrategicIntent(str, Enum):
     NONE = "none"
 
 
+class KnowledgeBasis(str, Enum):
+    pass
+
+    FIRST_PERSON = "first_person"
+    pass
+
+    ROLE_PRIVATE = "role_private"
+    pass
+
+    INFERENCE = "inference"
+    pass
+
+    NONE = "none"
+    pass
+
+
+class IntentEvidence(str, Enum):
+    pass
+
+    FIRST_PERSON_KNOWLEDGE = "first_person_knowledge"
+    pass
+
+    ROLE_PRIVATE_KNOWLEDGE = "role_private_knowledge"
+    pass
+
+    OBJECTIVE_ACTION = "objective_action"
+    pass
+
+    PRIVATE_REASONING = "private_reasoning"
+    pass
+
+    DECLARED_STRATEGY = "declared_strategy"
+    pass
+
+    NONE = "none"
+    pass
+
+
 @dataclass
 class Claim:
     pass
@@ -150,6 +203,8 @@ class Claim:
     speaker_knowledge: SpeakerKnowledge = SpeakerKnowledge.UNKNOWN
     deception_intent: bool | None = None
     deception_type: DeceptionType | None = None
+    knowledge_basis: KnowledgeBasis = KnowledgeBasis.NONE
+    intent_evidence: IntentEvidence = IntentEvidence.NONE
     target: str | None = None
     confidence: float = 1.0
     resolution: str = "unresolved"
@@ -165,6 +220,8 @@ class Claim:
             "speaker_knowledge": self.speaker_knowledge.value,
             "deception_intent": self.deception_intent,
             "deception_type": self.deception_type.value if self.deception_type else None,
+            "knowledge_basis": self.knowledge_basis.value,
+            "intent_evidence": self.intent_evidence.value,
             "target": self.target,
             "confidence": self.confidence,
             "resolution": self.resolution,
@@ -203,6 +260,8 @@ class UtteranceAnnotation:
     utterance_truth_status: UtteranceTruthStatus = UtteranceTruthStatus.NOT_APPLICABLE
     utterance_deception_status: UtteranceDeceptionStatus = UtteranceDeceptionStatus.NOT_APPLICABLE
     structured_speech: StructuredSpeech = field(default_factory=StructuredSpeech)
+    intent_evidence: IntentEvidence = IntentEvidence.NONE
+    intent_evidence_detail: str = ""
     notes: str = ""
 
     def to_dict(self) -> dict[str, object]:
@@ -214,6 +273,8 @@ class UtteranceAnnotation:
             "utterance_truth_status": self.utterance_truth_status.value,
             "utterance_deception_status": self.utterance_deception_status.value,
             "structured_speech": self.structured_speech.to_dict(),
+            "intent_evidence": self.intent_evidence.value,
+            "intent_evidence_detail": self.intent_evidence_detail,
             "notes": self.notes,
         }
 
@@ -227,6 +288,8 @@ __all__ = [
     "Claim",
     "ClaimType",
     "DeceptionType",
+    "IntentEvidence",
+    "KnowledgeBasis",
     "SpeakerKnowledge",
     "SpeechAct",
     "StrategicIntent",

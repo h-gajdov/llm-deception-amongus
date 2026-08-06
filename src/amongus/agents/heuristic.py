@@ -48,6 +48,8 @@ class HeuristicAgent:
             full_response=raw,
             speech=speech,
             parse_status="valid",
+            requested_action=action,
+            requested_action_text=rendered,
             spans=bundle.spans,
         )
 

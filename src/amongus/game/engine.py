@@ -299,6 +299,11 @@ class AmongUsGame:
 
             decision = ScriptedAgent().act(ctx)
             decision.parse_status = "fallback"
+            decision.requested_action = None
+            decision.requested_action_text = ""
+            decision.requested_action_valid = False
+            decision.execution_source = "fallback_safe_action"
+            decision.fallback_reason = f"agent_error:{type(exc).__name__}"
             decision.validation_warnings.append(f"agent_error:{type(exc).__name__}")
             return decision
 
@@ -745,8 +750,15 @@ class AmongUsGame:
                     "raw": decision.full_response,
                     "generated_rationale": decision.response.get("Thinking Process", ""),
                     "generated_condensed_memory": decision.response.get("Condensed Memory", ""),
+                                                                          
+                                                                               
+                                                                                 
                     "action": _action_dict(action),
-                    "requested_action": _action_dict(decision.action),
+                    "requested_action": _requested_action_dict(decision),
+                    "requested_action_text": decision.requested_action_text,
+                    "requested_action_valid": _requested_valid(decision, rejection),
+                    "execution_source": _execution_source(decision, rejection),
+                    "fallback_reason": _fallback_reason(decision, rejection),
                     "speech": decision.speech,
                     "declared_speech": decision.declared_speech,
                     "parse_status": decision.parse_status,
@@ -819,6 +831,47 @@ def _action_dict(action: Action) -> dict[str, object]:
         "target_name": action.target_name,
         "task": action.task.name if action.task else None,
     }
+
+
+def _requested_action_dict(decision: Decision) -> dict[str, object]:
+    pass
+    requested = decision.requested_action
+    if requested is None and decision.execution_source in ("model", "model_normalized"):
+        requested = decision.action
+    if requested is None:
+        return {
+            "type": None,
+            "rendered": decision.requested_action_text,
+            "source_room": None,
+            "target_room": None,
+            "target_name": None,
+            "task": None,
+            "text": decision.requested_action_text,
+        }
+    block = _action_dict(requested)
+    block["text"] = decision.requested_action_text or requested.render()
+    return block
+
+
+def _requested_valid(decision: Decision, rejection: ActionRejection | None) -> bool:
+    pass
+    if not decision.requested_action_valid:
+        return False
+    return rejection is None or decision.execution_source not in ("model", "model_normalized")
+
+
+def _execution_source(decision: Decision, rejection: ActionRejection | None) -> str:
+    pass
+    return "engine_safe_fallback" if rejection is not None else decision.execution_source
+
+
+def _fallback_reason(decision: Decision, rejection: ActionRejection | None) -> str | None:
+    pass
+    if rejection is None:
+        return decision.fallback_reason
+    if decision.fallback_reason:
+        return f"{decision.fallback_reason}+{rejection.code}"
+    return rejection.code
 
 
 def _declared_speech(raw: dict[str, object] | None) -> StructuredSpeech | None:

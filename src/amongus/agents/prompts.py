@@ -30,7 +30,10 @@ ask, propose_vote, inform, other; and strategic_intent is one of shift_suspicion
 establish_alibi, protect_ally, build_trust, seek_information, share_evidence,
 coordinate_vote, none.
 
-Do not invent an action that is not in the list, and follow the format exactly."""
+The [Action] line must be one of the lines under Available actions, copied
+character for character. Do not invent an action, do not pick an action type
+that is not listed, and do not change a room name or a target name. An answer
+that is not on the list is discarded and you simply lose the turn."""
 
                                                                                 
                       
@@ -60,8 +63,34 @@ action from the Available actions list under [Action].
 {output_format}"""
 
 SPEAK_INSTRUCTION = (
-    "You are speaking to the whole meeting. Whatever you write will be repeated "
-    "verbatim to every other player, attributed to you."
+    "This turn is a discussion turn. You are speaking to the whole meeting, and "
+    "whatever you write will be repeated verbatim to every other player, "
+    "attributed to you. SPEAK is the only action available: answer with the "
+    "SPEAK line and put what you say after the colon. You cannot move, do a "
+    "task or vote this turn."
+)
+
+                                                                              
+                                                                               
+                                     
+VOTE_INSTRUCTION = (
+    "This turn is the vote, not a discussion turn. Choose exactly one VOTE line "
+    "from Available actions and answer with that line and nothing else. Do not "
+    "write SPEAK, do not add an argument to the [Action] line, and do not vote "
+    "for anyone who is not listed. Put your reasoning under [Thinking Process] "
+    "instead -- only the VOTE line counts."
+)
+
+                                                                                
+                                                           
+TASK_INSTRUCTION = (
+    "This turn is a task turn. Speaking is not possible: you may only talk when "
+    "a SPEAK action appears in the Available actions list, which happens during "
+    "meetings. You can only walk to a room that is listed as walk-adjacent to "
+    "your current one, so reaching a task room usually takes several MOVE turns "
+    "in a row -- take the next step towards it rather than naming a room you "
+    "cannot reach this turn. You can only work on a task that is in the room "
+    "you are standing in right now."
 )
 
 _RETRY_INSTRUCTION = (
@@ -98,8 +127,7 @@ def build_prompt(
         sections = _inline_role_section(sections, view, cfg)
     else:
         sections = _augment_role_section(sections, cfg, view)
-    if view.phase is Phase.MEETING:
-        sections = [*sections, ("speak_instruction", SPEAK_INSTRUCTION)]
+    sections = [*sections, _phase_instruction(view)]
     if retry_hint:
         sections = [*sections, ("retry", _RETRY_INSTRUCTION.format(reason=retry_hint))]
 
@@ -111,6 +139,16 @@ def build_prompt(
         sections=dict(sections),
         spans=spans,
     )
+
+
+def _phase_instruction(view: PlayerView) -> tuple[str, str]:
+    pass
+    verbs = {action.split(" ", 1)[0].upper() for action in view.available_actions}
+    if view.phase is Phase.MEETING and "SPEAK" in verbs:
+        return "speak_instruction", SPEAK_INSTRUCTION
+    if view.phase is Phase.MEETING:
+        return "vote_instruction", VOTE_INSTRUCTION
+    return "task_instruction", TASK_INSTRUCTION
 
 
 def _build_system_prompt(view: PlayerView, cfg: AgentConfig) -> str:
@@ -186,6 +224,8 @@ def render_user_message(bundle: PromptBundle) -> str:
 __all__ = [
     "PROBE_TEXT_SEPARATOR",
     "SPEAK_INSTRUCTION",
+    "TASK_INSTRUCTION",
+    "VOTE_INSTRUCTION",
     "PromptBundle",
     "build_prompt",
     "render_user_message",

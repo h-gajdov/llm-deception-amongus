@@ -5,7 +5,7 @@
 
 
 
-experiment_name: diverse_qwen3
+experiment_name: diverse_phi4
 num_games: 100
 seed: 1
 output_dir: expt-logs
@@ -56,8 +56,8 @@ game:
 agent:
   impostor_backend: ollama
   crewmate_backend: ollama
-  impostor_llm_choices: ["qwen3:8b"]
-  crewmate_llm_choices: ["qwen3:8b"]
+  impostor_llm_choices: ["phi4:14b"]
+  crewmate_llm_choices: ["phi4:14b"]
   prompt_template: v2-personality
   role_prompt_mode: separate
   personality_mode: sampled
@@ -78,7 +78,7 @@ agent:
   language_style: "plain, conversational English; two or three sentences at most"
   max_parse_retries: 2
   ollama:
-    model: qwen3:8b
+    model: phi4:14b
     host: http://localhost:11434
     temperature: 0.9
     top_p: 0.95

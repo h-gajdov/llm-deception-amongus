@@ -48,8 +48,15 @@ class ModelOutput(BaseModel):
     generated_condensed_memory: str = ""
     action: dict[str, Any] = Field(default_factory=dict)
     requested_action: dict[str, Any] = Field(default_factory=dict)
+    requested_action_text: str = ""
+    requested_action_valid: bool = True
+                                                                             
+                              
+    execution_source: str = "model"
+    fallback_reason: str | None = None
     speech: str | None = None
     declared_speech: dict[str, Any] | None = None
+                                                                              
     parse_status: str = "valid"
     attempts: list[dict[str, Any]] = Field(default_factory=list)
 

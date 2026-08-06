@@ -137,6 +137,7 @@ def turn_to_row(turn: TurnRecordModel, split: str) -> dict[str, Any]:
         "speech": speech,
         "utterance_deception_status": status,
         "utterance_truth_status": str(turn.annotations.get("utterance_truth_status", "")),
+        "intent_evidence": str(turn.annotations.get("intent_evidence", "none")),
         "deception_label": _BINARY_LABEL.get(status),
         "deception_types": ",".join(
             sorted({str(c["deception_type"]) for c in claims if c.get("deception_type")})
@@ -153,7 +154,16 @@ def turn_to_row(turn: TurnRecordModel, split: str) -> dict[str, Any]:
         "memory_context": str(sections.get("memory_context", "")),
         "action_list": str(sections.get("action_list", "")),
         "generated_rationale": turn.model_output.generated_rationale,
+                                                                                
+                                                                        
         "generated_action": str((turn.model_output.action or {}).get("rendered", "")),
+        "requested_action": str(
+            (turn.model_output.requested_action or {}).get("rendered", "")
+            or turn.model_output.requested_action_text
+        ),
+        "requested_action_valid": bool(turn.model_output.requested_action_valid),
+        "execution_source": turn.model_output.execution_source,
+        "fallback_reason": turn.model_output.fallback_reason or "",
         "probe_text": probe_text,
         "probe_text_no_role": _excise(probe_text, role_span),
         "probe_regions": json.dumps(turn.probe_regions),

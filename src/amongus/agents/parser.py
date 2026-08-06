@@ -15,6 +15,16 @@ _SECTION_RE = re.compile(
 )
 _THINK_TAG_RE = re.compile(r"<think>.*?</think>", re.IGNORECASE | re.DOTALL)
 _LEADING_ENUM_RE = re.compile(r"^\s*\d+[.)]\s*")
+                                                                          
+_ACTION_MARKER_RE = re.compile(r"^\s*\[?\s*action\s*\]?\s*:?\s*", re.IGNORECASE)
+                                                                        
+_SMART_QUOTES = "\u201c\u201d\u2018\u2019"
+_DASHES = "\u2013\u2014"
+                                                                          
+_DECORATION_RE = re.compile(rf"^[\s*`\"'>\-{_DASHES}{_SMART_QUOTES}]+|[\s*`\"'.{_SMART_QUOTES}]+$")
+                                                                             
+                                                                           
+_SEPARATOR_RE = re.compile(rf"[:,\-{_DASHES}]+")
 
 
 def strip_think_tags(text: str) -> str:
@@ -73,57 +83,91 @@ def parse_speech_intent(text: str) -> dict[str, object] | None:
 def _normalise(text: str) -> str:
     pass
     text = _LEADING_ENUM_RE.sub("", text.strip())
-    return re.sub(r"\s+", " ", text).lower().rstrip(".")
+    text = _ACTION_MARKER_RE.sub("", text)
+    text = _DECORATION_RE.sub("", text)
+    text = _SEPARATOR_RE.sub(" ", text)
+    return re.sub(r"\s+", " ", text).strip().lower()
+
+
+                                                                                 
+                                                                             
+                                  
+_WAIT_SYNONYMS = frozenset(
+    _normalise(phrase)
+    for phrase in (
+        "WAIT",
+        "WAIT (do nothing)",
+        "WAIT (do nothing this turn)",
+        "WAIT this turn",
+        "WAIT and do nothing",
+        "DO NOTHING",
+        "DO NOTHING this turn",
+        "PASS",
+        "STAY",
+        "STAY PUT",
+        "NO ACTION",
+        "NONE",
+    )
+)
 
 
 @dataclass(frozen=True)
 class ActionMatch:
     pass
 
-    action: Action
+    action: Action | None
     speech: str | None
     status: str
+    requested_text: str = ""
+    reason: str = ""
+
+    @property
+    def resolved(self) -> bool:
+        pass
+        return self.action is not None
 
 
 def match_action(action_text: str, actions: list[Action]) -> ActionMatch:
     pass
     body = action_text.strip()
     first_line = body.splitlines()[0] if body else ""
-    cleaned = _LEADING_ENUM_RE.sub("", first_line).strip()
+    requested = _DECORATION_RE.sub(
+        "", _ACTION_MARKER_RE.sub("", _LEADING_ENUM_RE.sub("", first_line.strip()))
+    ).strip()
+    if not requested:
+        return ActionMatch(None, None, "none", "", "empty_action_line")
 
-    speak = next((a for a in actions if a.type is ActionType.SPEAK), None)
-    if speak is not None and cleaned.upper().startswith("SPEAK"):
-        return ActionMatch(speak, _extract_speech(cleaned), "exact")
+    if requested.upper().startswith("SPEAK"):
+        speak = next((a for a in actions if a.type is ActionType.SPEAK), None)
+        if speak is None:
+            return ActionMatch(None, None, "none", requested, "speak_not_available")
+        return ActionMatch(speak, _extract_speech(body), "exact", requested)
 
-    target = _normalise(cleaned)
     for action in actions:
-        if _normalise(action.render()) == target:
-            return ActionMatch(action, None, "exact")
+        if action.render() == requested:
+            return ActionMatch(action, None, "exact", requested)
 
-    best = _best_overlap(target, actions)
-    if best is not None:
-        return ActionMatch(best, None, "fuzzy")
-    return ActionMatch(actions[0], None, "none")
+    target = _normalise(requested)
+    hits = [a for a in actions if _normalise(a.render()) == target]
+    if len(hits) == 1:
+        return ActionMatch(hits[0], None, "normalized", requested)
+    if len(hits) > 1:                                                          
+        return ActionMatch(None, None, "none", requested, "ambiguous_action_line")
+
+    if target in _WAIT_SYNONYMS:
+        wait = next((a for a in actions if a.type is ActionType.WAIT), None)
+        if wait is not None:
+            return ActionMatch(wait, None, "normalized", requested)
+        return ActionMatch(None, None, "none", requested, "wait_not_available")
+
+    return ActionMatch(None, None, "none", requested, "not_an_available_action")
 
 
 def _extract_speech(text: str) -> str:
     pass
-    remainder = re.sub(r"^\s*SPEAK\s*:?\s*", "", text, flags=re.IGNORECASE)
-    return remainder.strip() or "(says nothing of note)"
-
-
-def _best_overlap(target: str, actions: list[Action]) -> Action | None:
-    pass
-    target_tokens = set(target.split())
-    if not target_tokens:
-        return None
-    best: Action | None = None
-    best_score = 0
-    for action in actions:
-        score = len(target_tokens & set(_normalise(action.render()).split()))
-        if score > best_score:
-            best, best_score = action, score
-    return best if best_score > 0 else None
+    body = _ACTION_MARKER_RE.sub("", _LEADING_ENUM_RE.sub("", text.strip()))
+    remainder = re.sub(r"^\s*SPEAK\s*:?\s*", "", body, flags=re.IGNORECASE)
+    return remainder.strip().strip("\"'" + _SMART_QUOTES) or "(says nothing of note)"
 
 
 __all__ = [

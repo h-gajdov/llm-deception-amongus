@@ -149,7 +149,10 @@ def _check_annotations(report: ValidationReport, turns: list[TurnRecordModel]) -
             claims_total += 1
             if claim.get("resolution") != "resolved":
                 unresolved += 1
-            if claim.get("deception_type"):
+                                                                            
+                                                                               
+                                                            
+            if claim.get("deception_type") and claim.get("deception_intent") is True:
                 subtypes[str(claim["deception_type"])] += 1
     report.distributions["deception_subtype"] = dict(subtypes)
     report.metrics["claims_extracted"] = claims_total
@@ -318,9 +321,28 @@ def _check_actions_and_parsing(report: ValidationReport, turns: list[TurnRecordM
         Counter(str((t.evaluation.get("rejection") or {}).get("code", "unknown")) for t in invalid)
     )
     report.distributions["parse_status"] = dict(Counter(t.model_output.parse_status for t in turns))
+                                                                         
+                                                                               
     failures = sum(1 for t in turns if t.model_output.parse_status in ("fallback", "recovered"))
     report.metrics["parser_failures"] = failures
     report.metrics["parser_failure_pct"] = 100.0 * failures / len(turns) if turns else 0.0
+    normalized = sum(1 for t in turns if t.model_output.parse_status == "normalized")
+    report.metrics["actions_matched_after_normalization"] = normalized
+
+                                                                              
+    report.distributions["execution_source"] = dict(
+        Counter(t.model_output.execution_source for t in turns)
+    )
+    report.distributions["fallback_reason"] = dict(
+        Counter(
+            str(t.model_output.fallback_reason) for t in turns if t.model_output.fallback_reason
+        )
+    )
+    unusable = sum(1 for t in turns if not t.model_output.requested_action_valid)
+    report.metrics["unusable_requested_actions"] = unusable
+    report.metrics["unusable_requested_action_pct"] = (
+        100.0 * unusable / len(turns) if turns else 0.0
+    )
 
     warnings: Counter[str] = Counter()
     for turn in turns:

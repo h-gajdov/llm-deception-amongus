@@ -103,12 +103,10 @@ class ExperimentWriter:
         for turn in result.turns:
             step_log = _to_step_log(turn)
             if full is not None:
-                full.write(json.dumps(step_log.model_dump(), indent=2, ensure_ascii=False))
+                full.write(json.dumps(step_log.model_dump(), ensure_ascii=False))
                 full.write("\n")
             if compact is not None:
-                compact.write(
-                    json.dumps(step_log.compact().model_dump(), indent=2, ensure_ascii=False)
-                )
+                compact.write(json.dumps(step_log.compact().model_dump(), ensure_ascii=False))
                 compact.write("\n")
         summary = self._handles.get("summary.json")
         if summary is not None:

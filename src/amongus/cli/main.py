@@ -701,6 +701,128 @@ def probe_compare(
     )
 
 
+annotate_app = typer.Typer(help="Post-hoc GPT-4o-mini annotation of a generated dataset.")
+app.add_typer(annotate_app, name="annotate")
+
+
+@annotate_app.command("gpt")
+def annotate_gpt(
+    dataset_dir: Path = typer.Argument(..., help="Schema 2.0 experiment dir (turns.jsonl)."),
+    model: str | None = typer.Option(
+        None,
+        "--model",
+        help="Override the model (default: $OPENAI_ANNOTATION_MODEL, else gpt-4o-mini).",
+    ),
+    overwrite: bool = typer.Option(
+        False,
+        "--overwrite",
+        help="Restart a gpt4omini/ folder that is already fully annotated. Never needed to "
+        "resume an incomplete one.",
+    ),
+    wait: bool = typer.Option(
+        False, "--wait/--no-wait", help="Block, polling until the batch finishes, then merge."
+    ),
+    poll_interval: float = typer.Option(
+        20.0, "--poll-interval", help="Seconds between polls when --wait is set."
+    ),
+    wait_timeout: float | None = typer.Option(
+        None, "--wait-timeout", help="Optional wall-clock budget in seconds for --wait."
+    ),
+    batch_size: int = typer.Option(
+        300,
+        "--batch-size",
+        help="Max turns processed per invocation (Batch API job size, or live-mode chunk "
+        "size). Lower this if you hit 'token_limit_exceeded' (an org-wide enqueued-token "
+        "cap); extra pending turns just wait for the next invocation.",
+    ),
+    live: bool = typer.Option(
+        False,
+        "--live",
+        help="Skip the Batch API and call chat.completions directly, one turn at a time. "
+        "No queueing delay or enqueued-token cap (ordinary rate limits apply and are waited "
+        "out automatically), at full per-token price instead of the Batch API's ~50% "
+        "discount. Ignores --wait/--poll-interval/--wait-timeout.",
+    ),
+    log_level: str = typer.Option("INFO", "--log-level", help="Logging level."),
+) -> None:
+    pass
+    from ..gpt_annotation.pipeline import run_annotation
+
+    configure_logging(log_level)
+    result = run_annotation(
+        dataset_dir,
+        model=model,
+        overwrite=overwrite,
+        wait=wait,
+        poll_interval_s=poll_interval,
+        poll_timeout_s=wait_timeout,
+        batch_size=batch_size,
+        live=live,
+    )
+    typer.echo(f"[{result.status}] {result.message}")
+    typer.echo(f"Output: {result.out_dir}")
+
+
+@annotate_app.command("holistic")
+def annotate_holistic(
+    dataset_dir: Path = typer.Argument(
+        ..., help="Dir containing agent-logs.json or agent-logs-compact.json."
+    ),
+    model: str | None = typer.Option(
+        None,
+        "--model",
+        help="Override the model (default: $OPENAI_ANNOTATION_MODEL, else gpt-4o-mini).",
+    ),
+    overwrite: bool = typer.Option(
+        False,
+        "--overwrite",
+        help="Restart a gpt4omini_holistic/ folder that is already fully rated. Never needed to "
+        "resume an incomplete one.",
+    ),
+    wait: bool = typer.Option(
+        False, "--wait/--no-wait", help="Block, polling until the batch finishes, then merge."
+    ),
+    poll_interval: float = typer.Option(
+        20.0, "--poll-interval", help="Seconds between polls when --wait is set."
+    ),
+    wait_timeout: float | None = typer.Option(
+        None, "--wait-timeout", help="Optional wall-clock budget in seconds for --wait."
+    ),
+    batch_size: int = typer.Option(
+        300,
+        "--batch-size",
+        help="Max rows processed per invocation (Batch API job size, or live-mode chunk "
+        "size). Lower this if you hit 'token_limit_exceeded' (an org-wide enqueued-token "
+        "cap); extra pending rows just wait for the next invocation.",
+    ),
+    live: bool = typer.Option(
+        False,
+        "--live",
+        help="Skip the Batch API and call chat.completions directly, one row at a time. "
+        "No queueing delay or enqueued-token cap (ordinary rate limits apply and are waited "
+        "out automatically), at full per-token price instead of the Batch API's ~50% "
+        "discount. Ignores --wait/--poll-interval/--wait-timeout.",
+    ),
+    log_level: str = typer.Option("INFO", "--log-level", help="Logging level."),
+) -> None:
+    pass
+    from ..gpt_annotation.legacy_pipeline import run_holistic_annotation
+
+    configure_logging(log_level)
+    result = run_holistic_annotation(
+        dataset_dir,
+        model=model,
+        overwrite=overwrite,
+        wait=wait,
+        poll_interval_s=poll_interval,
+        poll_timeout_s=wait_timeout,
+        batch_size=batch_size,
+        live=live,
+    )
+    typer.echo(f"[{result.status}] {result.message}")
+    typer.echo(f"Output: {result.out_dir}")
+
+
 def _override_probe_config(cfg, **flags):                                
     pass
     model_update: dict[str, object] = {}

@@ -59,6 +59,12 @@ dev = [
     "pytest-cov>=5.0",
 ]
 
+
+
+annotate = [
+    "openai>=1.30",
+]
+
 [project.scripts]
 amongus = "amongus.cli.main:app"
 

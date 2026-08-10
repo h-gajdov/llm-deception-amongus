@@ -35,6 +35,11 @@ def generate(
     num_games: int | None = typer.Option(
         None, "--num-games", "-n", help="Override the number of games to play."
     ),
+    max_turns: int | None = typer.Option(
+        None,
+        "--max-turns",
+        help="Stop once about this many turns are written (games are never cut in half).",
+    ),
     experiment_name: str | None = typer.Option(
         None, "--name", help="Override the experiment name."
     ),
@@ -63,6 +68,7 @@ def generate(
     cfg = _apply_overrides(
         cfg,
         num_games=num_games,
+        max_turns=max_turns,
         experiment_name=experiment_name,
         model=model,
         impostor_model=impostor_model,
@@ -362,6 +368,27 @@ def viz_html(
         output = experiment_dir / f"viz_{slug}.html"
     output.write_text(html, encoding="utf-8")
     typer.echo(f"Wrote interactive visualization to: {output}")
+
+
+@viz_app.command("site")
+def viz_site(
+    root: Path = typer.Argument(
+        Path("expt-logs"), help="Tree of schema 2.0 experiments (or a single one)."
+    ),
+    output: Path | None = typer.Option(
+        None, "--output", "-o", help="Output folder (default: 'viewer' beside the root)."
+    ),
+    limit: int | None = typer.Option(
+        None, "--limit", "-n", help="Only include the first N games per dataset."
+    ),
+    log_level: str = typer.Option("INFO", "--log-level", help="Logging level."),
+) -> None:
+    pass
+    from ..viz.site import build_site
+
+    configure_logging(log_level)
+    directory = build_site(root, output, limit=limit)
+    typer.echo(f"Wrote review site to: {directory / 'index.html'}")
 
 
 def _select_frame(frames: list, step: int | None):
@@ -717,6 +744,7 @@ def _apply_overrides(
     *,
     num_games: int | None,
     experiment_name: str | None,
+    max_turns: int | None = None,
     model: str | None,
     impostor_model: str | None = None,
     crewmate_model: str | None = None,
@@ -728,6 +756,8 @@ def _apply_overrides(
     update: dict[str, object] = {}
     if num_games is not None:
         update["num_games"] = num_games
+    if max_turns is not None:
+        update["max_turns"] = max_turns
     if experiment_name is not None:
         update["experiment_name"] = experiment_name
     if output_dir is not None:

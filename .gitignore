@@ -20,6 +20,7 @@ data/processed/
 data/probes/
 outputs/
 expt-logs/
+viewer/
 *.parquet
 *.arrow
 

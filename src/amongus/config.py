@@ -224,6 +224,16 @@ class AgentConfig(BaseModel):
                                                                             
     max_parse_retries: int = Field(default=1, ge=0)
 
+                                                                               
+                                                                   
+                                                                            
+                                                                               
+                                                                             
+                                                                              
+                                                                           
+                 
+    model_options: dict[str, dict[str, Any]] = Field(default_factory=dict)
+
     @model_validator(mode="after")
     def _check_personalities(self) -> AgentConfig:
         pass
@@ -241,6 +251,26 @@ class AgentConfig(BaseModel):
                 raise ValueError(msg)
         return self
 
+    @model_validator(mode="after")
+    def _check_model_options(self) -> AgentConfig:
+        pass
+        known = set(OllamaConfig.model_fields) | set(OpenAIConfig.model_fields)
+        for choice, overrides in self.model_options.items():
+            unknown = sorted(set(overrides) - known)
+            if unknown:
+                msg = (
+                    f"model_options[{choice!r}] has unknown key(s) {unknown}; "
+                    f"expected fields of OllamaConfig/OpenAIConfig."
+                )
+                raise ValueError(msg)
+            if "model" in overrides:
+                msg = (
+                    f"model_options[{choice!r}] must not set 'model'; the model comes "
+                    f"from the *_llm_choices entry this block is keyed by."
+                )
+                raise ValueError(msg)
+        return self
+
 
 class GenerationConfig(BaseModel):
     pass
@@ -249,6 +279,18 @@ class GenerationConfig(BaseModel):
 
     experiment_name: str = "qwen3_8b_selfplay"
     num_games: int = Field(default=10, ge=1)
+                                                                              
+                                                                           
+                                                                            
+                                                                      
+                                               
+     
+                                                                             
+                                                                              
+                                                                                 
+                                                                                
+                                                                                 
+    max_turns: int | None = Field(default=None, ge=1)
     seed: int = 0
     output_dir: Path = Path("expt-logs")
     log_level: str = "INFO"

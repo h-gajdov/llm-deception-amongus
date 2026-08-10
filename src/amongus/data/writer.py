@@ -37,6 +37,8 @@ class ExperimentWriter:
         self._commit = commit
         self.directory = Path(config.output_dir) / config.experiment_dirname()
         self._handles: dict[str, TextIO] = {}
+        self.games_written = 0
+        self.turns_written = 0
 
     def __enter__(self) -> ExperimentWriter:
         pass
@@ -65,6 +67,7 @@ class ExperimentWriter:
         for handle in self._handles.values():
             handle.close()
         self._handles.clear()
+        self._write_metadata()
 
     def _open(self, filename: str) -> None:
         pass
@@ -92,6 +95,8 @@ class ExperimentWriter:
         self._write_line(GAMES_FILE, _game_record(result))
         if self._config.write_legacy_logs:
             self._write_legacy(result)
+        self.games_written += 1
+        self.turns_written += len(result.turns)
 
                                                                           
                             
@@ -123,6 +128,15 @@ class ExperimentWriter:
             "schema_version": SCHEMA_VERSION,
             "experiment_name": self._config.experiment_name,
             "num_games": self._config.num_games,
+                                                                           
+                                                                    
+            "games_written": self.games_written,
+            "turns_written": self.turns_written,
+            "max_turns": self._config.max_turns,
+            "stopped_on_turn_budget": bool(
+                self._config.max_turns is not None
+                and 0 < self.games_written < self._config.num_games
+            ),
             "seed": self._config.seed,
             "commit": self._commit,
             "created": date.today().isoformat(),

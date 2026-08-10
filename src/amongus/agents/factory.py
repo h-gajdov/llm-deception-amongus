@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import random
 
-from ..config import BACKENDS, AgentConfig
+from ..config import BACKENDS, AgentConfig, OllamaConfig, OpenAIConfig
 from ..game.agent_api import Agent, ScriptedAgent
 from ..game.enums import Role
 from ..game.state import PlayerState
@@ -33,7 +33,7 @@ class AgentFactoryBuilder:
         else:
             backend, choices = self._config.crewmate_backend, self._config.crewmate_llm_choices
 
-        effective_backend, model = self._resolve(backend, choices)
+        effective_backend, model, choice = self._resolve(backend, choices)
         if effective_backend == _SCRIPTED:
             return ScriptedAgent()
         if effective_backend == _HEURISTIC:
@@ -41,17 +41,20 @@ class AgentFactoryBuilder:
 
             return HeuristicAgent(seed=self._rng.getrandbits(32))
         if effective_backend == "ollama":
-            return LLMAgent(self._ollama_client(model), self._config)
+            return LLMAgent(self._ollama_client(model, choice), self._config)
         if effective_backend == "openai":
-            return LLMAgent(self._openai_client(model), self._config)
+            return LLMAgent(self._openai_client(model, choice), self._config)
         msg = f"Unknown agent backend: {effective_backend!r}"                    
         raise ValueError(msg)
 
-    def _resolve(self, default_backend: str, choices: list[str]) -> tuple[str, str]:
+    def _resolve(self, default_backend: str, choices: list[str]) -> tuple[str, str, str]:
         pass
         if not choices:
-            return default_backend, self._default_model(default_backend)
-        return _split_choice(self._rng.choice(choices), default_backend)
+            model = self._default_model(default_backend)
+            return default_backend, model, model
+        choice = self._rng.choice(choices)
+        backend, model = _split_choice(choice, default_backend)
+        return backend, model, choice
 
     def _default_model(self, backend: str) -> str:
         pass
@@ -61,19 +64,28 @@ class AgentFactoryBuilder:
             return self._config.openai.model
         return backend
 
-    def _ollama_client(self, model: str) -> LLMClient:
+    def _overrides(self, model: str, choice: str) -> dict[str, object]:
+        pass
+        options = self._config.model_options
+        return dict(options.get(choice) or options.get(model) or {})
+
+    def _ollama_client(self, model: str, choice: str) -> LLMClient:
         pass
         key = f"ollama:{model}"
         if key not in self._clients:
-            cfg = self._config.ollama.model_copy(update={"model": model})
+            base = self._config.ollama.model_dump()
+                                                                            
+                                                                         
+            cfg = OllamaConfig(**{**base, **self._overrides(model, choice), "model": model})
             self._clients[key] = OllamaClient(cfg)
         return self._clients[key]
 
-    def _openai_client(self, model: str) -> LLMClient:
+    def _openai_client(self, model: str, choice: str) -> LLMClient:
         pass
         key = f"openai:{model}"
         if key not in self._clients:
-            cfg = self._config.openai.model_copy(update={"model": model})
+            base = self._config.openai.model_dump()
+            cfg = OpenAIConfig(**{**base, **self._overrides(model, choice), "model": model})
             self._clients[key] = OpenAIClient(cfg)
         return self._clients[key]
 

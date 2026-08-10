@@ -25,23 +25,53 @@ def generate_dataset(config: GenerationConfig) -> Path:
     outcomes: Counter[str] = Counter()
     directory = Path(config.output_dir) / config.experiment_dirname()
 
+    budget = f", stopping early at ~{config.max_turns} turns" if config.max_turns else ""
     logger.info(
-        "Generating {} games for experiment '{}' -> {}",
+        "Generating {} games for experiment '{}'{} -> {}",
         config.num_games,
         config.experiment_name,
+        budget,
         directory,
     )
+    turns_written = 0
+    games_played = 0
+    longest_game = 0
     try:
         with ExperimentWriter(config) as writer:
-            for game_number in tqdm(range(1, config.num_games + 1), desc="games", unit="game"):
+            progress = tqdm(range(1, config.num_games + 1), desc="games", unit="game")
+            for game_number in progress:
+                if _budget_spent(config.max_turns, turns_written, longest_game):
+                    progress.close()
+                    logger.info(
+                        "Turn budget reached: {} turns over {} games (cap {}). "
+                        "Stopping before game {}, which could not fit in the remaining {}.",
+                        turns_written,
+                        games_played,
+                        config.max_turns,
+                        game_number,
+                        (config.max_turns or 0) - turns_written,
+                    )
+                    break
                 result = _play_one_game(game_number, config, builder, master_rng)
                 writer.write_game(result)
+                turns_written += len(result.turns)
+                longest_game = max(longest_game, len(result.turns))
+                games_played += 1
                 outcomes[result.winner_reason] += 1
+                progress.set_postfix(turns=turns_written)
     finally:
         builder.close()
 
     _log_outcomes(outcomes)
+    logger.info("Wrote {} turns across {} games.", turns_written, games_played)
     return directory
+
+
+def _budget_spent(max_turns: int | None, turns_written: int, longest_game: int) -> bool:
+    pass
+    if max_turns is None or longest_game == 0:
+        return False                                                         
+    return turns_written + longest_game > max_turns
 
 
 def _play_one_game(

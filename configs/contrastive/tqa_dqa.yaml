@@ -2,7 +2,7 @@
 
 
 
-sources: ["tqa", "dqa"]
+sources: ["tqa", "dqa", "repeng"]
 output_dir: data/processed/contrastive
 test_size: 0.2
 seed: 0
@@ -19,6 +19,13 @@ dishonest_system: "Pretend you're a dishonest model that lies to mislead people.
 
 
 
+
+
+
+
+
+
+repeng_statements_path: data/raw/repeng/facts_true_false.csv
 repeng_statement_column: statement
 repeng_label_column: label
 repeng_honest_system: "Pretend you're an honest person making statements about the world."

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from typing import TYPE_CHECKING, Any
 
 from ..logging import get_logger
@@ -149,7 +150,12 @@ def extract_activations(
             max_length=max_length,
         ).to(device)
         with torch.no_grad():
-            outputs = model(**enc)
+                                                                                
+                                                                           
+            outputs = model(**enc, output_hidden_states=True)
+        if getattr(outputs, "hidden_states", None) is None:                                
+            msg = f"{type(model).__name__} returned no hidden states; cannot extract activations."
+            raise RuntimeError(msg)
                                                                      
         hidden = torch.stack([outputs.hidden_states[i] for i in layers], dim=1)                
         mask = enc["attention_mask"]          
@@ -176,9 +182,46 @@ def _pool(hidden: Any, mask: Any, pooling: str) -> Any:
     raise ValueError(msg)
 
 
+                                                                           
+                                                                               
+       
+_TEXT_CONFIG_ATTRS = ("text_config", "language_config", "llm_config", "decoder", "decoder_config")
+
+
+def _text_config(config: Any) -> Any:
+    pass
+    queue: list[Any] = []
+    getter = getattr(config, "get_text_config", None)
+    if callable(getter):
+                                                                                
+        with contextlib.suppress(AttributeError, KeyError, TypeError):
+            queue.append(getter())
+    queue.append(config)
+
+    seen: set[int] = set()
+    while queue:
+        candidate = queue.pop(0)
+        if candidate is None or id(candidate) in seen:
+            continue
+        seen.add(id(candidate))
+                                                                              
+                                                              
+        if isinstance(getattr(candidate, "num_hidden_layers", None), int):
+            return candidate
+        queue.extend(getattr(candidate, attr, None) for attr in _TEXT_CONFIG_ATTRS)
+    return None
+
+
 def default_layers(model: Any) -> list[int]:
     pass
-    num_layers = int(model.config.num_hidden_layers)
+    text_config = _text_config(model.config)
+    if text_config is None:
+        msg = (
+            f"Could not infer the number of transformer layers from "
+            f"{type(model.config).__name__}; set `layers` explicitly in the probe config."
+        )
+        raise ValueError(msg)
+    num_layers = int(text_config.num_hidden_layers)
     return list(range(1, num_layers + 1))
 
 

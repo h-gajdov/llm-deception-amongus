@@ -10,16 +10,15 @@
 
 
 
-
 dataset_dir: data/processed/contrastive
 output_dir: data/probes/gemma4-12B
 
 model:
   name: google/gemma-4-12B
   device: cuda
-  dtype: auto
 
 
+  dtype: bfloat16
 
 
 use_chat_template: true
@@ -29,7 +28,7 @@ use_chat_template: true
 layers: null
 pooling: last
 max_length: 2048
-extraction_batch_size: 16
+extraction_batch_size: 8
 
 probe:
   epochs: 200

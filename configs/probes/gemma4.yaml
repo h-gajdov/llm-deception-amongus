@@ -1,0 +1,54 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+dataset_dir: data/processed/contrastive
+output_dir: data/probes/gemma4-12B
+
+model:
+  name: google/gemma-4-12B
+  device: cuda
+  dtype: auto
+
+
+
+
+use_chat_template: true
+
+
+
+layers: null
+pooling: last
+max_length: 2048
+extraction_batch_size: 16
+
+probe:
+  epochs: 200
+  lr: 0.001
+  weight_decay: 0.001
+  batch_size: 64
+  standardize: true
+  log_every: 10
+
+tracking:
+  wandb:
+    enabled: true
+    project: amongus-probes
+    run_name: gemma4
+    mode: online
+  mlflow:
+    enabled: true
+    experiment: amongus-probes
+    run_name: gemma4
+
+
+seed: 0

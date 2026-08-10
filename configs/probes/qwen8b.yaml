@@ -1,0 +1,54 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+dataset_dir: data/processed/contrastive
+output_dir: data/probes/qwen8b
+
+model:
+  name: Qwen/Qwen3-8B
+  device: cuda
+  dtype: auto
+
+
+
+
+use_chat_template: true
+
+
+
+layers: null
+pooling: last
+max_length: 2048
+extraction_batch_size: 16
+
+probe:
+  epochs: 200
+  lr: 0.001
+  weight_decay: 0.001
+  batch_size: 64
+  standardize: true
+  log_every: 10
+
+tracking:
+  wandb:
+    enabled: true
+    project: amongus-probes
+    run_name: qwen8b
+    mode: online
+  mlflow:
+    enabled: true
+    experiment: amongus-probes
+    run_name: qwen8b
+
+
+seed: 0

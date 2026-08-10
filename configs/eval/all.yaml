@@ -1,0 +1,48 @@
+
+
+
+
+
+
+
+
+
+
+probes:
+
+  discover: [data/probes]
+  paths: []
+
+  exclude: [comparison, eval_suite]
+
+datasets:
+  roots: [expt-logs]
+  include: []
+  exclude: []
+  max_rows: null
+  speak_only: false
+
+output_dir: data/probes/eval_suite
+
+
+
+
+label_source: auto
+holistic_threshold: 7
+
+text_mode: response
+apply_chat_template: false
+
+device: auto
+batch_size: 16
+
+baseline:
+  seeds: 5
+  seed: 0
+
+chart:
+  enabled: true
+  metric: auroc
+  dpi: 150
+
+reuse: true

@@ -1,0 +1,38 @@
+
+
+
+
+
+
+
+
+probes:
+  discover: []
+  paths:
+    - data/probes/gpt2/probe.joblib
+    - data/probes/qwen_smoke/probe.joblib
+
+datasets:
+  roots: [expt-logs]
+
+
+  include:
+    - heuristic_validation_8_games
+    - "*llama_phi*"
+  max_rows: 200
+
+output_dir: data/probes/eval_suite_smoke
+
+label_source: auto
+holistic_threshold: 7
+text_mode: response
+device: auto
+batch_size: 8
+
+baseline:
+  seeds: 5
+  seed: 0
+
+chart:
+  enabled: true
+  metric: auroc

@@ -14,6 +14,38 @@ logger = get_logger()
 
 REFERENCE_REPO_ID = "7vik/amongus"
 
+                                                               
+                                                                               
+                                                            
+HOLISTIC_DIRNAME = "gpt4omini_holistic"
+
+                                                                                
+                                                                                
+                        
+KIND_V2 = "v2"
+KIND_HOLISTIC = "holistic"
+
+
+def dataset_dir_of(directory: str | Path) -> Path:
+    pass
+    path = Path(directory)
+    return path.parent if path.name == HOLISTIC_DIRNAME else path
+
+
+def find_log_datasets(root: str | Path) -> list[tuple[Path, str]]:
+    pass
+    root = Path(root)
+    candidates = {dataset_dir_of(p.parent) for p in root.rglob(TURNS_FILE)}
+    if (root / TURNS_FILE).exists() or (root / HOLISTIC_DIRNAME / TURNS_FILE).exists():
+        candidates.add(root)
+    out: list[tuple[Path, str]] = []
+    for directory in sorted(candidates):
+        if (directory / TURNS_FILE).exists():
+            out.append((directory, KIND_V2))
+        elif (directory / HOLISTIC_DIRNAME / TURNS_FILE).exists():
+            out.append((directory, KIND_HOLISTIC))
+    return out
+
 
 def iter_json_objects(text: str) -> Iterator[dict[str, object]]:
     pass
@@ -38,11 +70,8 @@ def iter_step_logs(agent_logs_path: str | Path) -> Iterator[StepLog]:
 
 def iter_game_summaries(summary_path: str | Path) -> Iterator[tuple[str, GameSummary]]:
     pass
-    for line in Path(summary_path).read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        obj = json.loads(line)
+    text = Path(summary_path).read_text(encoding="utf-8")
+    for obj in iter_json_objects(text):
         for game_index, value in obj.items():
             yield game_index, GameSummary.model_validate(value)
 
@@ -56,8 +85,7 @@ def find_experiment_dirs(root: str | Path) -> list[Path]:
 
 def find_v2_dirs(root: str | Path) -> list[Path]:
     pass
-    root = Path(root)
-    return sorted({p.parent for p in root.rglob(TURNS_FILE)})
+    return [d for d, kind in find_log_datasets(root) if kind == KIND_V2]
 
 
 def iter_turns(experiment_dir: str | Path) -> Iterator[TurnRecordModel]:

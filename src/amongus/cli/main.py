@@ -701,6 +701,95 @@ def probe_compare(
     )
 
 
+@probe_app.command("suite")
+def probe_suite(
+    config_path: Path = typer.Option(
+        ..., "--config", "-c", help="Evaluation-suite YAML (see configs/eval/)."
+    ),
+    output_dir: Path | None = typer.Option(
+        None, "--output-dir", "-o", help="Override the config's output_dir."
+    ),
+    datasets_root: list[Path] = typer.Option(
+        [], "--root", help="Override the dataset roots to search (repeatable)."
+    ),
+    probe: list[Path] = typer.Option(
+        [], "--probe", "-p", help="Evaluate only these probe.joblib paths (repeatable)."
+    ),
+    label_source: str | None = typer.Option(
+        None,
+        "--label-source",
+        help="auto | grounded | holistic | impostor. Overrides the config.",
+    ),
+    max_rows: int | None = typer.Option(
+        None, "--max-rows", help="Cap rows per dataset (quick runs)."
+    ),
+    speak_only: bool | None = typer.Option(
+        None, "--speak-only/--all-turns", help="Restrict to discussion utterances."
+    ),
+    device: str | None = typer.Option(None, "--device", help="auto | cpu | cuda."),
+    batch_size: int | None = typer.Option(None, "--batch-size", help="Prompts per forward pass."),
+    reuse: bool | None = typer.Option(
+        None,
+        "--reuse/--no-reuse",
+        help="Reuse matching rows from a previous results.json instead of re-running.",
+    ),
+    log_level: str = typer.Option("INFO", "--log-level", help="Logging level."),
+) -> None:
+    pass
+    from ..probes.suite import run_suite
+    from ..probes.suite_config import EvalSuiteConfig
+
+    cfg = load_config(config_path, EvalSuiteConfig)
+    if output_dir is not None:
+        cfg = cfg.model_copy(update={"output_dir": output_dir})
+    if datasets_root:
+        cfg = cfg.model_copy(
+            update={"datasets": cfg.datasets.model_copy(update={"roots": list(datasets_root)})}
+        )
+    if probe:
+        cfg = cfg.model_copy(
+            update={"probes": cfg.probes.model_copy(update={"paths": list(probe), "discover": []})}
+        )
+    if label_source is not None:
+        if label_source not in ("auto", "grounded", "holistic", "impostor"):
+            raise typer.BadParameter(
+                "--label-source must be auto, grounded, holistic or impostor."
+            )
+        cfg = cfg.model_copy(update={"label_source": label_source})
+    if max_rows is not None:
+        cfg = cfg.model_copy(
+            update={"datasets": cfg.datasets.model_copy(update={"max_rows": max_rows})}
+        )
+    if speak_only is not None:
+        cfg = cfg.model_copy(
+            update={"datasets": cfg.datasets.model_copy(update={"speak_only": speak_only})}
+        )
+    if device is not None:
+        cfg = cfg.model_copy(update={"device": device})
+    if batch_size is not None:
+        cfg = cfg.model_copy(update={"batch_size": batch_size})
+    if reuse is not None:
+        cfg = cfg.model_copy(update={"reuse": reuse})
+
+    configure_logging(log_level)
+    report = run_suite(cfg)
+
+    lifts = report.lift()
+    typer.echo(
+        f"Scored {len(report.probes)} probe(s) on {len(report.datasets)} dataset(s) "
+        f"-> {len(report.rows)} rows."
+    )
+    if lifts:
+        typer.echo("\nAUROC lift over the untrained control (best first):")
+        for probe_name, dataset_name, lift in lifts:
+            typer.echo(f"  {lift:+.3f}  {probe_name:<18} {dataset_name}")
+    for skip in report.skipped:
+        typer.echo(f"  skipped {skip['dataset']}: {skip['reason']}")
+    typer.echo(f"\nJSON  -> {report.results_path}")
+    if report.chart_path:
+        typer.echo(f"Chart -> {report.chart_path}")
+
+
 annotate_app = typer.Typer(help="Post-hoc GPT-4o-mini annotation of a generated dataset.")
 app.add_typer(annotate_app, name="annotate")
 

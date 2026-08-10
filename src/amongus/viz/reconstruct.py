@@ -11,7 +11,20 @@ from ..data.ingest import iter_game_summaries, iter_step_logs
 from ..data.records import StepLog
 from .layout import color_of
 
-_STARTING_ROOM = "Cafeteria"
+STARTING_ROOM = "Cafeteria"
+
+                                                                               
+                                                                                
+                                                                                 
+                                                                 
+_LIST_MARKER_RE = re.compile(r"^\s*(?:[-*•]\s*)?(?:\d+\s*[.)]\s*)?")
+
+                                                                  
+                                                                        
+                                                                              
+                                                                             
+                                                    
+_ACTION_TAG_RE = re.compile(r"\[\s*Action\s*\]\s*(.+?)\s*$", re.IGNORECASE | re.DOTALL)
 
 _MOVE_RE = re.compile(r"^\s*(?:MOVE|VENT)\s+from\s+(.+?)\s+to\s+(.+?)\s*$", re.IGNORECASE)
 _KILL_RE = re.compile(r"^\s*KILL\s+(.+?)\s*$", re.IGNORECASE)
@@ -88,7 +101,8 @@ def build_roster(steps: list[StepLog]) -> list[PlayerInfo]:
 
 def _register_target(step: StepLog, seen: dict[str, PlayerInfo]) -> None:
     pass
-    kind, fields = parse_action(step.interaction.response.get("Action", ""))
+    action, _ = logged_action(step.interaction.response, step.interaction.full_response)
+    kind, fields = parse_action(action)
     target = fields.get("target", "")
     if kind not in (EventKind.KILL, EventKind.VOTE):
         return
@@ -122,7 +136,7 @@ def _player_number(name: str) -> int:
 
 def parse_action(action: str) -> tuple[EventKind, dict[str, str]]:
     pass
-    text = action.strip()
+    text = _LIST_MARKER_RE.sub("", action.strip(), count=1).strip()
     upper = text.upper()
     if move := _MOVE_RE.match(text):
         kind = EventKind.VENT if upper.startswith("VENT") else EventKind.MOVE
@@ -142,12 +156,36 @@ def parse_action(action: str) -> tuple[EventKind, dict[str, str]]:
     return EventKind.OTHER, {}
 
 
+def _usable_action(value: object) -> str:
+    pass
+    if not isinstance(value, str):
+        return ""
+    text = value.strip()
+    return "" if text.startswith("{") else text
+
+
+def logged_action(response: dict[str, str], full_response: str = "") -> tuple[str, bool]:
+    pass
+    action = _usable_action(response.get("Action"))
+    if action:
+        return action, False
+    match = _ACTION_TAG_RE.search(full_response or "")
+    if not match:
+        return "", False
+                                                                              
+                                                        
+    for line in match.group(1).splitlines():
+        if line.strip():
+            return line.strip(), True
+    return "", False
+
+
 def reconstruct_frames(
     steps: list[StepLog], roster: list[PlayerInfo] | None = None
 ) -> tuple[list[Frame], list[PlayerInfo]]:
     pass
     roster = roster or build_roster(steps)
-    positions = {p.name: _STARTING_ROOM for p in roster}
+    positions = {p.name: STARTING_ROOM for p in roster}
     alive = {p.name: True for p in roster}
     bodies: dict[str, str] = {}
 
@@ -155,8 +193,9 @@ def reconstruct_frames(
     for step in steps:
         actor = step.player.name
         positions[actor] = step.player.location                                     
-        kind, fields = parse_action(step.interaction.response.get("Action", ""))
-        speech = _apply_event(kind, fields, actor, positions, alive, bodies)
+        action, _ = logged_action(step.interaction.response, step.interaction.full_response)
+        kind, fields = parse_action(action)
+        speech = apply_board_event(kind, fields, actor, positions, alive, bodies)
         frames.append(
             Frame(
                 step=step.step,
@@ -175,7 +214,7 @@ def reconstruct_frames(
     return frames, roster
 
 
-def _apply_event(
+def apply_board_event(
     kind: EventKind,
     fields: dict[str, str],
     actor: str,
@@ -260,11 +299,14 @@ def _load_winner(directory: Path, game_index: str) -> str | None:
 
 
 __all__ = [
+    "STARTING_ROOM",
     "EventKind",
     "Frame",
     "PlayerInfo",
+    "apply_board_event",
     "build_roster",
     "load_game",
+    "logged_action",
     "parse_action",
     "reconstruct_frames",
     "roster_from_summary",

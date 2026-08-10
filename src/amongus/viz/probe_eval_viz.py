@@ -7,10 +7,14 @@ from pathlib import Path
 from string import Template
 from typing import TYPE_CHECKING, Any
 
+from ..logging import get_logger
+
 if TYPE_CHECKING:                                  
     from collections.abc import Sequence
 
     from ..probes.eval import EvalReport
+
+logger = get_logger()
 
                                                           
 _METRICS: list[tuple[str, str]] = [
@@ -23,6 +27,27 @@ _METRICS: list[tuple[str, str]] = [
 
                                                                     
 _PALETTE = ["#4f8cff", "#ff6b6b", "#34d399", "#ffb347", "#b57bff", "#22d3ee", "#f472b6"]
+
+                                                                             
+                                                                           
+                                                                              
+                                                                             
+                                                                               
+                                                  
+_SUITE_PALETTE = [
+    "#2a78d6",        
+    "#eb6834",          
+    "#1baf7a",        
+    "#eda100",          
+    "#e87ba4",           
+    "#008300",         
+    "#4a3aa7",          
+    "#e34948",       
+]
+_SUITE_SURFACE = "#fcfcfb"
+_SUITE_INK = "#1a1a19"
+_SUITE_INK_SOFT = "#5c5c58"
+_SUITE_GRID = "#e3e3e0"
 
                                   
 _W, _H = 920, 480
@@ -332,4 +357,150 @@ _PAGE = Template(
 )
 
 
-__all__ = ["render_comparison_html", "render_comparison_png"]
+def render_suite_png(
+    rows: Sequence[dict[str, Any]],
+    output_path: str | Path,
+    *,
+    metric: str = "auroc",
+    dpi: int = 150,
+) -> Path:
+    pass
+    try:
+        import matplotlib
+
+        matplotlib.use("Agg")                                               
+        import matplotlib.pyplot as plt
+    except ImportError as exc:                                                    
+        msg = "matplotlib is required for the suite chart (install the 'ml' extra)."
+        raise ImportError(msg) from exc
+
+    datasets = _ordered({str(r["dataset"]) for r in rows}, rows, "dataset")
+    probes = _ordered({str(r["probe"]) for r in rows}, rows, "probe")
+    if not datasets or not probes:
+        msg = "No rows to plot."
+        raise ValueError(msg)
+    if len(probes) > len(_SUITE_PALETTE):
+                                                                            
+                                                                           
+        dropped = probes[len(_SUITE_PALETTE) :]
+        probes = probes[: len(_SUITE_PALETTE)]
+        logger.warning(
+            "Charting the first {} probes; {} omitted from the figure (still in results.json): {}",
+            len(probes),
+            len(dropped),
+            ", ".join(dropped),
+        )
+
+    by_key = {(str(r["probe"]), str(r["dataset"]), str(r["variant"])): r for r in rows}
+                                                                              
+                                                            
+    width = min(26.0, max(9.0, 0.55 * len(datasets) * len(probes) + 2.5))
+    fig, axes = plt.subplots(
+        2, 1, figsize=(width, 8.0), sharex=True, sharey=True, facecolor=_SUITE_SURFACE
+    )
+    label = {"auroc": "AUROC", "accuracy": "Accuracy", "f1": "F1"}.get(metric, metric.upper())
+    titles = [
+        ("base", f"Untrained control — random direction, same model and layer ({label})"),
+        ("trained", f"Trained probe ({label})"),
+    ]
+
+    bar_w = 0.82 / max(len(probes), 1)
+    for ax, (variant, title) in zip(axes, titles, strict=True):
+        ax.set_facecolor(_SUITE_SURFACE)
+        for i, probe in enumerate(probes):
+            offset = (i - (len(probes) - 1) / 2.0) * bar_w
+            xs, values, errors = [], [], []
+            for j, dataset in enumerate(datasets):
+                row = by_key.get((probe, dataset, variant))
+                value = None if row is None else row.get(metric)
+                xs.append(j + offset)
+                values.append(0.0 if value is None else float(value))
+                std = (row or {}).get(f"{metric}_std")
+                errors.append(0.0 if std is None else float(std))
+            bars = ax.bar(
+                xs,
+                values,
+                bar_w * 0.86,                                           
+                label=probe if variant == "base" else None,
+                color=_SUITE_PALETTE[i],
+                yerr=errors if any(errors) else None,
+                error_kw={"ecolor": _SUITE_INK_SOFT, "elinewidth": 1, "capsize": 2},
+            )
+            ax.bar_label(
+                bars,
+                labels=[f"{v:.2f}" if v else "" for v in values],
+                fontsize=7,
+                padding=2,
+                color=_SUITE_INK,
+            )
+        ax.axhline(0.5, color=_SUITE_INK_SOFT, linestyle="--", linewidth=1)
+        ax.set_title(title, fontsize=11, color=_SUITE_INK, loc="left")
+        ax.set_ylabel(label, fontsize=9, color=_SUITE_INK_SOFT)
+        ax.set_ylim(0.0, 1.05)
+        ax.grid(axis="y", color=_SUITE_GRID, linewidth=0.8)
+        ax.set_axisbelow(True)
+        for spine in ("top", "right"):
+            ax.spines[spine].set_visible(False)
+        for spine in ("left", "bottom"):
+            ax.spines[spine].set_color(_SUITE_GRID)
+        ax.tick_params(colors=_SUITE_INK_SOFT, labelsize=8)
+
+                                                                              
+                                                                           
+    counts = {
+        str(r["dataset"]): int(r["n"]) for r in rows if str(r["variant"]) == "trained"
+    }
+                                                                         
+    rotated = len(datasets) > 4
+    axes[1].set_xticks(range(len(datasets)))
+    axes[1].set_xticklabels(
+        [f"{d}\nn={counts.get(d, 0):,}" for d in datasets],
+        rotation=25 if rotated else 0,
+        rotation_mode="anchor" if rotated else None,
+        ha="right" if rotated else "center",
+        fontsize=8,
+        color=_SUITE_INK,
+    )
+    title = "Deception probes on the gameplay logs — control above, trained below"
+    if len(probes) == 1:
+                                                             
+        title = f"{probes[0]} on the gameplay logs — control above, trained below"
+    else:
+        fig.legend(
+            *axes[0].get_legend_handles_labels(),
+            loc="upper left",
+            bbox_to_anchor=(0.012, 0.945),
+            ncol=min(len(probes), 6),
+            fontsize=8,
+            frameon=False,
+        )
+    fig.suptitle(title, fontsize=13, color=_SUITE_INK, x=0.012, ha="left", y=0.985)
+    fig.text(
+        0.012,
+        0.012,
+        "Dashed line: chance (0.5). Error bars on the control: spread across the random "
+        "directions. Full metrics, labels and counts in results.json.",
+        fontsize=8,
+        color=_SUITE_INK_SOFT,
+    )
+    top = 0.955 if len(probes) == 1 else 0.925
+    fig.tight_layout(rect=(0, 0.03, 1, top))
+
+    out = Path(output_path)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out, dpi=dpi, facecolor=_SUITE_SURFACE)
+    plt.close(fig)
+    return out
+
+
+def _ordered(names: set[str], rows: Sequence[dict[str, Any]], key: str) -> list[str]:
+    pass
+    seen: list[str] = []
+    for row in rows:
+        value = str(row[key])
+        if value in names and value not in seen:
+            seen.append(value)
+    return seen
+
+
+__all__ = ["render_comparison_html", "render_comparison_png", "render_suite_png"]

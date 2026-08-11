@@ -47,6 +47,10 @@ class SuiteRow:
     label_source: str
     probe: str
     probe_path: str
+                                                                                
+                                                                              
+                                        
+    probe_fingerprint: str
     model_name: str
     layer: int
     variant: str                                           
@@ -359,8 +363,6 @@ def _base_metrics(
                                                                                
 def run_suite(config: EvalSuiteConfig) -> SuiteReport:
     pass
-    import numpy as np
-
     datasets = select_datasets(config)
     probe_paths = select_probes(config)
     if not probe_paths:
@@ -375,104 +377,212 @@ def run_suite(config: EvalSuiteConfig) -> SuiteReport:
 
     probes = {path: load_probe(path) for path in probe_paths}
     labels = _probe_labels(probe_paths)
+    fingerprints = {path: _fingerprint(path) for path in probe_paths}
+    groups = _by_model(probe_paths, probes)
     logger.info(
-        "Suite: {} probe(s) x {} dataset(s), base + trained.", len(probe_paths), len(datasets)
+        "Suite: {} probe(s) over {} base model(s) x {} dataset(s), base + trained.",
+        len(probe_paths),
+        len(groups),
+        len(datasets),
     )
 
     out_dir = Path(config.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    cached = _load_cached(out_dir / RESULTS_FILE, config) if config.reuse else {}
-
     report = SuiteReport(
         datasets=[d.name for d, _ in datasets],
         probes=[labels[p] for p in probe_paths],
     )
+    if config.reuse:
+        done = _load_cached(out_dir / RESULTS_FILE, config, labels, fingerprints)
+        report.rows.extend(done.values())
+        if done:
+            logger.info("Resuming: {} row(s) already on disk under these settings.", len(done))
     device = resolve_device(config.device)
+    rows_cache: dict[Path, tuple[list[EvalRow], str]] = {}
 
-    for directory, kind in datasets:
-                                                                             
-                                                           
-        variants = (VARIANT_BASE, VARIANT_TRAINED)
-        pending: list[Path] = []
-        for path in probe_paths:
-            keys = [(labels[path], directory.name, v) for v in variants]
-            if all(key in cached for key in keys):
-                report.rows.extend(cached[key] for key in keys)
-            else:
-                pending.append(path)
-        if not pending:
-            logger.info("Reusing cached results for {}.", directory.name)
+                                                                                
+                                                                                
+                                              
+    for model_name, group in groups.items():
+        skipped = _skipped(report)
+        outstanding = [
+            (directory, kind)
+            for directory, kind in datasets
+            if directory.name not in skipped and _pending_probes(group, directory, labels, report)
+        ]
+        if not outstanding:
+            logger.info("{}: every dataset already scored; not loading the model.", model_name)
             continue
-        try:
-            rows, source = load_eval_rows(directory, kind, config)
-        except (OSError, ValueError) as err:
-            logger.warning("Skipping {}: {}", directory.name, err)
-            report.skipped.append({"dataset": directory.name, "reason": str(err)})
-            continue
-        if not rows:
-            reason = "no labelled rows under this label source and filters"
-            logger.warning("Skipping {}: {}.", directory.name, reason)
-            report.skipped.append({"dataset": directory.name, "reason": reason})
-            continue
-
-        y_true = np.array([r.label for r in rows])
-        texts = [r.text for r in rows]
-        logger.info(
-            "{}: {} rows, label={}, positives {:.1%}",
-            directory.name,
-            len(rows),
-            source,
-            float(y_true.mean()),
+        _run_model_pass(
+            model_name=model_name,
+            group=group,
+            outstanding=outstanding,
+            probes=probes,
+            labels=labels,
+            fingerprints=fingerprints,
+            rows_cache=rows_cache,
+            device=device,
+            config=config,
+            report=report,
+            out_dir=out_dir,
         )
-        for model_name, group in _by_model(pending, probes).items():
+
+    _persist(report, out_dir, config, chart=True)
+    return report
+
+
+def _skipped(report: SuiteReport) -> set[str]:
+    pass
+    return {entry["dataset"] for entry in report.skipped}
+
+
+def _pending_probes(
+    group: list[Path], directory: Path, labels: dict[Path, str], report: SuiteReport
+) -> list[Path]:
+    pass
+    have = {(row.probe, row.dataset, row.variant) for row in report.rows}
+    return [
+        path
+        for path in group
+        if not all(
+            (labels[path], directory.name, variant) in have
+            for variant in (VARIANT_BASE, VARIANT_TRAINED)
+        )
+    ]
+
+
+def _run_model_pass(
+    *,
+    model_name: str,
+    group: list[Path],
+    outstanding: list[tuple[Path, str]],
+    probes: dict[Path, LoadedProbe],
+    labels: dict[Path, str],
+    fingerprints: dict[Path, str],
+    rows_cache: dict[Path, tuple[list[EvalRow], str]],
+    device: str,
+    config: EvalSuiteConfig,
+    report: SuiteReport,
+    out_dir: Path,
+) -> None:
+    pass
+    import numpy as np
+
+    layers = sorted({probes[p].layer for p in group})
+    reference = probes[group[0]]
+    logger.info(
+        "Loading {} once for {} probe(s), layers {}, over {} dataset(s).",
+        model_name,
+        len(group),
+        layers,
+        len(outstanding),
+    )
+    model, tokenizer = load_model_and_tokenizer(ModelConfig(name=model_name), device)
+    tokenizer.truncation_side = "left"
+    try:
+        for directory, kind in outstanding:
+            pending = _pending_probes(group, directory, labels, report)
+            if not pending:
+                continue
+            loaded = _dataset_rows(directory, kind, config, rows_cache, report)
+            if loaded is None:
+                continue
+            rows, source = loaded
+            y_true = np.array([r.label for r in rows])
+            logger.info(
+                "{} / {}: {} rows, label={}, positives {:.1%}",
+                model_name,
+                directory.name,
+                len(rows),
+                source,
+                float(y_true.mean()),
+            )
             report.rows.extend(
-                _score_model_group(
+                _score_dataset(
+                    model=model,
+                    tokenizer=tokenizer,
                     model_name=model_name,
-                    group=group,
+                    group=pending,
+                    layers=layers,
+                    reference=reference,
                     probes=probes,
                     labels=labels,
-                    texts=texts,
+                    fingerprints=fingerprints,
+                    texts=[r.text for r in rows],
                     y_true=y_true,
                     directory=directory,
                     kind=kind,
                     source=source,
-                    device=device,
                     config=config,
                 )
             )
+                                                                             
+                                                                           
+            _persist(report, out_dir, config, chart=False)
+    finally:
+        _release(model)
 
-    _persist(report, out_dir, config)
-    return report
+
+def _dataset_rows(
+    directory: Path,
+    kind: str,
+    config: EvalSuiteConfig,
+    cache: dict[Path, tuple[list[EvalRow], str]],
+    report: SuiteReport,
+) -> tuple[list[EvalRow], str] | None:
+    pass
+    if directory in cache:
+        return cache[directory]
+    try:
+        rows, source = load_eval_rows(directory, kind, config)
+    except (OSError, ValueError) as err:
+        logger.warning("Skipping {}: {}", directory.name, err)
+        report.skipped.append({"dataset": directory.name, "reason": str(err)})
+        return None
+    if not rows:
+        reason = "no labelled rows under this label source and filters"
+        logger.warning("Skipping {}: {}.", directory.name, reason)
+        report.skipped.append({"dataset": directory.name, "reason": reason})
+        return None
+    if config.cache_rows:
+        cache[directory] = (rows, source)
+    return rows, source
 
 
-def _score_model_group(
+def _release(model: Any) -> None:
+    pass
+    import gc
+
+    del model
+    gc.collect()
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except ImportError:                                               
+        pass
+
+
+def _score_dataset(
     *,
+    model: Any,
+    tokenizer: Any,
     model_name: str,
     group: list[Path],
+    layers: list[int],
+    reference: LoadedProbe,
     probes: dict[Path, LoadedProbe],
     labels: dict[Path, str],
+    fingerprints: dict[Path, str],
     texts: list[str],
     y_true: np.ndarray,
     directory: Path,
     kind: str,
     source: str,
-    device: str,
     config: EvalSuiteConfig,
 ) -> list[SuiteRow]:
     pass
-    layers = sorted({probes[p].layer for p in group})
-    reference = probes[group[0]]
-    logger.info(
-        "Loading {} for {} probe(s), layers {} on {}.",
-        model_name,
-        len(group),
-        layers,
-        directory.name,
-    )
-    model, tokenizer = load_model_and_tokenizer(ModelConfig(name=model_name), device)
-                                                                              
-                                                        
-    tokenizer.truncation_side = "left"
     prompts = _apply_template(texts, tokenizer) if config.apply_chat_template else texts
     activations = extract_activations(
         model,
@@ -482,9 +592,8 @@ def _score_model_group(
         pooling=reference.pooling,
         batch_size=config.batch_size,
         max_length=reference.max_length,
-        desc=f"{directory.name} / {model_name}",
+        desc=f"{model_name} / {directory.name}",
     )
-    del model
 
     rows: list[SuiteRow] = []
     for path in group:
@@ -497,6 +606,7 @@ def _score_model_group(
             "label_source": source,
             "probe": labels[path],
             "probe_path": str(path),
+            "probe_fingerprint": fingerprints[path],
             "model_name": probe.model_name,
             "layer": probe.layer,
             "n": len(texts),
@@ -558,7 +668,22 @@ def _probe_labels(paths: list[Path]) -> dict[Path, str]:
     return out
 
 
-def _load_cached(path: Path, config: EvalSuiteConfig) -> dict[tuple[str, str, str], SuiteRow]:
+def _fingerprint(path: Path) -> str:
+    pass
+    import hashlib
+
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()[:16]
+    except OSError:                                                            
+        return ""
+
+
+def _load_cached(
+    path: Path,
+    config: EvalSuiteConfig,
+    labels: dict[Path, str],
+    fingerprints: dict[Path, str],
+) -> dict[tuple[str, str, str], SuiteRow]:
     pass
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
@@ -571,13 +696,23 @@ def _load_cached(path: Path, config: EvalSuiteConfig) -> dict[tuple[str, str, st
     from dataclasses import fields
 
     known = {f.name for f in fields(SuiteRow)}
+    current = {labels[p]: fingerprints[p] for p in labels}
     out: dict[tuple[str, str, str], SuiteRow] = {}
+    stale: set[str] = set()
     for raw in payload.get("rows") or []:
         try:
             row = SuiteRow(**{k: v for k, v in raw.items() if k in known})
         except TypeError:
             continue
+        expected = current.get(row.probe)
+        if expected is None:
+            continue                                      
+        if row.probe_fingerprint != expected:
+            stale.add(row.probe)
+            continue
         out[(row.probe, row.dataset, row.variant)] = row
+    for name in sorted(stale):
+        logger.info("{}: artifact changed since the cached run; rescoring it.", name)
     return out
 
 
@@ -595,7 +730,9 @@ def _settings(config: EvalSuiteConfig) -> dict[str, Any]:
     }
 
 
-def _persist(report: SuiteReport, out_dir: Path, config: EvalSuiteConfig) -> None:
+def _persist(
+    report: SuiteReport, out_dir: Path, config: EvalSuiteConfig, *, chart: bool = True
+) -> None:
     pass
     results = out_dir / RESULTS_FILE
     payload = {
@@ -605,22 +742,26 @@ def _persist(report: SuiteReport, out_dir: Path, config: EvalSuiteConfig) -> Non
         "skipped": report.skipped,
         "rows": [asdict(r) for r in report.rows],
     }
-    results.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+                                                                          
+                                                                           
+    tmp = results.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    tmp.replace(results)
     report.results_path = str(results)
     logger.info("Wrote {} rows to {}.", len(report.rows), results)
 
-    if not config.chart.enabled or not report.rows:
+    if not chart or not config.chart.enabled or not report.rows:
         return
     from ..viz.probe_eval_viz import render_suite_png
 
-    chart = render_suite_png(
+    chart_path = render_suite_png(
         [asdict(r) for r in report.rows],
         out_dir / CHART_FILE,
         metric=config.chart.metric,
         dpi=config.chart.dpi,
     )
-    report.chart_path = str(chart)
-    logger.info("Wrote paired base-vs-trained chart to {}.", chart)
+    report.chart_path = str(chart_path)
+    logger.info("Wrote paired base-vs-trained chart to {}.", chart_path)
 
 
 __all__ = [

@@ -102,7 +102,14 @@ class EvalSuiteConfig(BaseModel):
     chart: ChartConfig = Field(default_factory=ChartConfig)
 
                                                                                 
-                                 
+                                                                             
+                                                                           
+    cache_rows: bool = True
+
+                                                                               
+                                                                            
+                                                                           
+                                                                         
     reuse: bool = True
 
 

@@ -1,0 +1,67 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+dataset_dir: data/processed/contrastive
+output_dir: data/probes/phi-4-last10
+
+model:
+  name: microsoft/phi-4
+  device: cuda
+  dtype: auto
+
+use_chat_template: true
+
+layers: null
+pooling: last_n
+pooling_tokens: 10
+max_length: 2048
+extraction_batch_size: 16
+
+
+
+debug_tokens: 3
+
+probe:
+  epochs: 200
+  lr: 0.001
+  weight_decay: 0.001
+  batch_size: 64
+
+  standardize: true
+  log_every: 10
+
+tracking:
+  wandb:
+    enabled: true
+    project: amongus-probes
+    run_name: phi-4-last10
+    mode: online
+  mlflow:
+    enabled: true
+    experiment: amongus-probes
+    run_name: phi-4-last10
+
+
+seed: 0

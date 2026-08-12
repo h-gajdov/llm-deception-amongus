@@ -9,8 +9,9 @@
 probes:
   discover: []
   paths:
+
+
     - data/probes/gpt2/probe.joblib
-    - data/probes/qwen_smoke/probe.joblib
 
 datasets:
   roots: [expt-logs]

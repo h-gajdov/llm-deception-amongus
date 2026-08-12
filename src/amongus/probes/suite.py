@@ -10,11 +10,16 @@ from typing import TYPE_CHECKING, Any
 
 from ..data.ingest import HOLISTIC_DIRNAME, KIND_HOLISTIC, KIND_V2, find_log_datasets
 from ..logging import get_logger
-from .activations import extract_activations, load_model_and_tokenizer, resolve_device
+from .activations import (
+    content_span,
+    extract_token_activations,
+    load_model_and_tokenizer,
+    resolve_device,
+)
 from .config import ModelConfig
 from .eval import LoadedProbe, load_probe, render_eval_text
 from .suite_config import EvalSuiteConfig
-from .train import TorchProbeState
+from .train import TorchProbeState, example_scores
 
 if TYPE_CHECKING:                                  
     import numpy as np
@@ -70,6 +75,9 @@ class SuiteRow:
     seeds: int = 1
     text_mode: str = "response"
     speak_only: bool = False
+                                                                                 
+    pooling_tokens: int = 1
+    n_tokens: int = 0
 
 
 @dataclass
@@ -110,6 +118,7 @@ class EvalRow:
     text: str
     label: int
     is_speak: bool
+    content: str = ""
 
 
 def _lines(path: Path):
@@ -172,7 +181,13 @@ def _v2_rows(directory: Path, source: str, config: EvalSuiteConfig):
             label = _GROUNDED_LABEL.get(status)
         if label is None:
             continue
-        yield EvalRow(text=_v2_text(turn, config.text_mode), label=label, is_speak=bool(speech))
+        raw = str(output.get("raw", "")).strip()
+        yield EvalRow(
+            text=_v2_text(turn, config.text_mode),
+            label=label,
+            is_speak=bool(speech),
+            content=raw,
+        )
 
 
 def _v2_text(turn: dict[str, Any], mode: str) -> str:
@@ -227,6 +242,7 @@ def _holistic_rows(directory: Path, source: str, config: EvalSuiteConfig):
             text=render_eval_text(legacy, config.text_mode),                          
             label=label,
             is_speak=parse_action(action)[0] is EventKind.SPEAK,
+            content=full_response.strip() or action.strip(),
         )
 
 
@@ -320,9 +336,18 @@ def _metrics(y_true: np.ndarray, y_pred: np.ndarray, y_prob: np.ndarray) -> dict
     }
 
 
-def _score_state(state: TorchProbeState, x: np.ndarray, y_true: np.ndarray) -> dict[str, Any]:
+def _score_state(
+    state: TorchProbeState,
+    x: np.ndarray,
+    y_true: np.ndarray,
+    grouping: tuple[np.ndarray, int] | None = None,
+) -> dict[str, Any]:
     pass
-    return _metrics(y_true, state.predict(x), state.predict_proba(x))
+    y_prob = state.predict_proba(x)
+    if grouping is not None:
+        owner, n_examples = grouping
+        y_prob = example_scores(y_prob, owner, n_examples)
+    return _metrics(y_true, (y_prob > 0.5).astype(int), y_prob)
 
 
 def _mean_std(values: list[float | None]) -> tuple[float | None, float | None]:
@@ -336,11 +361,15 @@ def _mean_std(values: list[float | None]) -> tuple[float | None, float | None]:
 
 
 def _base_metrics(
-    probe: LoadedProbe, x: np.ndarray, y_true: np.ndarray, config: EvalSuiteConfig
+    probe: LoadedProbe,
+    x: np.ndarray,
+    y_true: np.ndarray,
+    config: EvalSuiteConfig,
+    grouping: tuple[np.ndarray, int] | None = None,
 ) -> dict[str, Any]:
     pass
     runs = [
-        _score_state(_random_state(probe, config.baseline.seed + i), x, y_true)
+        _score_state(_random_state(probe, config.baseline.seed + i), x, y_true, grouping)
         for i in range(config.baseline.seeds)
     ]
     auroc, auroc_std = _mean_std([r["auroc"] for r in runs])
@@ -380,7 +409,7 @@ def run_suite(config: EvalSuiteConfig) -> SuiteReport:
     fingerprints = {path: _fingerprint(path) for path in probe_paths}
     groups = _by_model(probe_paths, probes)
     logger.info(
-        "Suite: {} probe(s) over {} base model(s) x {} dataset(s), base + trained.",
+        "Suite: {} probe(s) over {} extraction pass(es) x {} dataset(s), base + trained.",
         len(probe_paths),
         len(groups),
         len(datasets),
@@ -403,7 +432,7 @@ def run_suite(config: EvalSuiteConfig) -> SuiteReport:
                                                                                 
                                                                                 
                                               
-    for model_name, group in groups.items():
+    for (model_name, _pooling, _tokens, _max_length), group in groups.items():
         skipped = _skipped(report)
         outstanding = [
             (directory, kind)
@@ -509,6 +538,7 @@ def _run_model_pass(
                     labels=labels,
                     fingerprints=fingerprints,
                     texts=[r.text for r in rows],
+                    contents=[r.content for r in rows],
                     y_true=y_true,
                     directory=directory,
                     kind=kind,
@@ -576,6 +606,7 @@ def _score_dataset(
     labels: dict[Path, str],
     fingerprints: dict[Path, str],
     texts: list[str],
+    contents: list[str],
     y_true: np.ndarray,
     directory: Path,
     kind: str,
@@ -584,7 +615,13 @@ def _score_dataset(
 ) -> list[SuiteRow]:
     pass
     prompts = _apply_template(texts, tokenizer) if config.apply_chat_template else texts
-    activations = extract_activations(
+                                                                              
+                                                                    
+    spans = [
+        content_span(prompt, content or prompt) or (0, len(prompt))
+        for prompt, content in zip(prompts, contents, strict=True)
+    ]
+    activations = extract_token_activations(
         model,
         tokenizer,
         prompts,
@@ -592,13 +629,15 @@ def _score_dataset(
         pooling=reference.pooling,
         batch_size=config.batch_size,
         max_length=reference.max_length,
+        pooling_tokens=reference.pooling_tokens,
+        content_spans=spans,
         desc=f"{model_name} / {directory.name}",
     )
 
     rows: list[SuiteRow] = []
     for path in group:
         probe = probes[path]
-        x = activations[:, layers.index(probe.layer), :]
+        x, owner = activations.layer_tokens(layers.index(probe.layer))
         common = {
             "dataset": directory.name,
             "dataset_path": str(directory),
@@ -609,15 +648,28 @@ def _score_dataset(
             "probe_fingerprint": fingerprints[path],
             "model_name": probe.model_name,
             "layer": probe.layer,
+                                                                                  
+                                                       
             "n": len(texts),
+            "n_tokens": activations.n_tokens,
+            "pooling_tokens": probe.pooling_tokens,
             "text_mode": config.text_mode,
             "speak_only": config.datasets.speak_only,
         }
+        grouping = (owner, activations.n_examples)
         rows.append(
-            SuiteRow(**common, variant=VARIANT_BASE, **_base_metrics(probe, x, y_true, config))
+            SuiteRow(
+                **common,
+                variant=VARIANT_BASE,
+                **_base_metrics(probe, x, y_true, config, grouping),
+            )
         )
         rows.append(
-            SuiteRow(**common, variant=VARIANT_TRAINED, **_score_state(probe.state, x, y_true))
+            SuiteRow(
+                **common,
+                variant=VARIANT_TRAINED,
+                **_score_state(probe.state, x, y_true, grouping),
+            )
         )
         trained, base = rows[-1], rows[-2]
         logger.info(
@@ -649,11 +701,15 @@ def _apply_template(texts: list[str], tokenizer: Any) -> list[str]:
     ]
 
 
-def _by_model(paths: list[Path], probes: dict[Path, LoadedProbe]) -> dict[str, list[Path]]:
+def _by_model(
+    paths: list[Path], probes: dict[Path, LoadedProbe]
+) -> dict[tuple[str, str, int, int], list[Path]]:
     pass
-    groups: dict[str, list[Path]] = {}
+    groups: dict[tuple[str, str, int, int], list[Path]] = {}
     for path in paths:
-        groups.setdefault(probes[path].model_name, []).append(path)
+        probe = probes[path]
+        key = (probe.model_name, probe.pooling, probe.pooling_tokens, probe.max_length)
+        groups.setdefault(key, []).append(path)
     return groups
 
 

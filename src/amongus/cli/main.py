@@ -505,7 +505,15 @@ def probe_train(
     layers: str | None = typer.Option(
         None, "--layers", help="Comma-separated layer indices (default: all)."
     ),
-    pooling: str | None = typer.Option(None, "--pooling", help="Token pooling: last | mean."),
+    pooling: str | None = typer.Option(
+        None, "--pooling", help="Token pooling: last | mean | last_n."
+    ),
+    pooling_tokens: int | None = typer.Option(
+        None, "--pooling-tokens", help="Tokens per example for --pooling last_n."
+    ),
+    debug_tokens: int | None = typer.Option(
+        None, "--debug-tokens", help="Print the selected tokens for N examples first."
+    ),
     batch_size: int | None = typer.Option(
         None, "--batch-size", help="Prompts per forward pass (extraction)."
     ),
@@ -533,6 +541,8 @@ def probe_train(
         model=model,
         layers=layers,
         pooling=pooling,
+        pooling_tokens=pooling_tokens,
+        debug_tokens=debug_tokens,
         batch_size=batch_size,
         limit=limit,
         device=device,
@@ -545,12 +555,66 @@ def probe_train(
     configure_logging(log_level)
     result = train_probes(cfg)
     best = result.best()
+    tokens = (
+        f", {result.pooling_tokens} tokens/example -> {result.n_train_tokens} samples"
+        if result.pooling == "last_n"
+        else ""
+    )
     typer.echo(
         f"Trained probes on {result.n_train} examples "
-        f"({result.model_name}, pooling={result.pooling}).\n"
+        f"({result.model_name}, pooling={result.pooling}{tokens}).\n"
         f"Best layer {best.layer}: acc={best.accuracy:.3f} f1={best.f1:.3f} "
         f"auroc={'n/a' if best.auroc is None else f'{best.auroc:.3f}'}\n"
         f"Saved probe -> {result.probe_path}\nMetrics -> {result.metrics_path}"
+    )
+
+
+@probe_app.command("tokens")
+def probe_tokens(
+    config: Path | None = typer.Option(
+        None, "--config", "-c", help="Probe-training YAML whose selection to preview."
+    ),
+    model: str | None = typer.Option(None, "--model", help="Override the tokenizer's model id."),
+    pooling_tokens: int | None = typer.Option(
+        None, "--pooling-tokens", help="Override N (default: the config's)."
+    ),
+    limit: int = typer.Option(3, "--limit", help="How many examples to print."),
+    output: Path | None = typer.Option(
+        None, "--output", "-o", help="Write the preview to a file instead of stdout."
+    ),
+    log_level: str = typer.Option("WARNING", "--log-level", help="Logging level."),
+) -> None:
+    pass
+    from transformers import AutoTokenizer
+
+    from ..net import configure_tls
+    from ..probes.activations import build_prompt_with_span, describe_selected_tokens
+    from ..probes.config import ProbeTrainConfig
+    from ..probes.train import _load_rows
+
+    configure_logging(log_level)
+    cfg = load_config(config, ProbeTrainConfig) if config else ProbeTrainConfig()
+    count = pooling_tokens or cfg.tokens_per_example
+    configure_tls()
+    tokenizer = AutoTokenizer.from_pretrained(model or cfg.model.name)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    train_rows, _ = _load_rows(cfg.dataset_dir, limit)
+    pairs = [
+        build_prompt_with_span(r, tokenizer, use_chat_template=cfg.use_chat_template)
+        for r in train_rows
+    ]
+    _emit(
+        describe_selected_tokens(
+            tokenizer,
+            [text for text, _ in pairs],
+            pooling_tokens=count,
+            max_length=cfg.max_length,
+            content_spans=[span for _, span in pairs],
+            limit=limit,
+        ),
+        output,
     )
 
 
@@ -752,9 +816,7 @@ def probe_suite(
         )
     if label_source is not None:
         if label_source not in ("auto", "grounded", "holistic", "impostor"):
-            raise typer.BadParameter(
-                "--label-source must be auto, grounded, holistic or impostor."
-            )
+            raise typer.BadParameter("--label-source must be auto, grounded, holistic or impostor.")
         cfg = cfg.model_copy(update={"label_source": label_source})
     if max_rows is not None:
         cfg = cfg.model_copy(
@@ -943,11 +1005,21 @@ def _override_probe_config(cfg, **flags):
         top["layers"] = [int(x.strip()) for x in flags["layers"].split(",") if x.strip()]
     if flags["pooling"] is not None:
         top["pooling"] = flags["pooling"]
+    if flags.get("pooling_tokens") is not None:
+        top["pooling_tokens"] = flags["pooling_tokens"]
+    if flags.get("debug_tokens") is not None:
+        top["debug_tokens"] = flags["debug_tokens"]
     if flags["batch_size"] is not None:
         top["extraction_batch_size"] = flags["batch_size"]
     if flags["limit"] is not None:
         top["limit"] = flags["limit"]
-    return cfg.model_copy(update=top)
+    cfg = cfg.model_copy(update=top)
+                                                                               
+                                                                             
+    if flags.get("pooling_tokens") is not None and cfg.pooling != "last_n":
+        msg = f"--pooling-tokens needs --pooling last_n (pooling is {cfg.pooling!r})."
+        raise typer.BadParameter(msg)
+    return cfg
 
 
 def _apply_overrides(

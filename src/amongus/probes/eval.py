@@ -8,9 +8,15 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal
 
 from ..logging import get_logger
-from .activations import extract_activations, load_model_and_tokenizer, resolve_device
+from .activations import (
+    TokenActivations,
+    content_span,
+    extract_token_activations,
+    load_model_and_tokenizer,
+    resolve_device,
+)
 from .config import ModelConfig
-from .train import TorchProbeState
+from .train import TorchProbeState, example_scores
 
 if TYPE_CHECKING:                                  
     from collections.abc import Sequence
@@ -33,6 +39,9 @@ class LoadedProbe:
     pooling: str
     use_chat_template: bool
     max_length: int
+                                                                             
+                                                                            
+    pooling_tokens: int = 1
 
 
 def load_probe(probe_path: str | Path) -> LoadedProbe:
@@ -51,10 +60,18 @@ def load_probe(probe_path: str | Path) -> LoadedProbe:
         pooling=payload.get("pooling", "last"),
         use_chat_template=bool(payload.get("use_chat_template", False)),
         max_length=int(payload.get("max_length", 512)),
+        pooling_tokens=int(payload.get("pooling_tokens", 1)),
     )
 
 
 def render_eval_text(row: dict[str, Any], mode: TextMode) -> str:
+    pass
+    return render_eval_text_with_span(row, mode)[0]
+
+
+def render_eval_text_with_span(
+    row: dict[str, Any], mode: TextMode
+) -> tuple[str, tuple[int, int] | None]:
     pass
     response = (row.get("full_response") or "").strip()
     if not response:
@@ -64,12 +81,14 @@ def render_eval_text(row: dict[str, Any], mode: TextMode) -> str:
         response = "\n".join(p for p in (thinking, action) if p)
 
     if mode == "response":
-        return response or (row.get("action") or "").strip() or "(no response)"
+        text = response or (row.get("action") or "").strip() or "(no response)"
+        return text, (0, len(text))
 
     system = (row.get("system_prompt") or "").strip()
     observation = (row.get("all_info") or row.get("memory") or "").strip()
     parts = [p for p in (system, observation, response) if p]
-    return "\n\n".join(parts) or "(no response)"
+    text = "\n\n".join(parts) or "(no response)"
+    return text, content_span(text, response) or (0, len(text))
 
 
 @dataclass
@@ -95,6 +114,10 @@ class EvalReport:
                                                                          
     baseline_accuracy: float
     baseline_auroc: float = 0.5
+                                                                               
+                                                                          
+    pooling_tokens: int = 1
+    n_tokens: int = 0
     report_path: str = ""
                                                                                
                                                                       
@@ -139,11 +162,12 @@ def _load_rows(dataset_dir: Path, split: str, limit: int | None) -> list[dict[st
     return [dict(row) for row in selected]
 
 
-def _score(probe: LoadedProbe, activations: np.ndarray, y_true: np.ndarray) -> _Scored:
+def _score(probe: LoadedProbe, activations: TokenActivations, y_true: np.ndarray) -> _Scored:
     pass
-    x = activations[:, 0, :]                                 
-    y_prob = probe.state.predict_proba(x)
-    y_pred = probe.state.predict(x)
+    x, owner = activations.layer_tokens(0)                                      
+    token_prob = probe.state.predict_proba(x)
+    y_prob = example_scores(token_prob, owner, activations.n_examples)
+    y_pred = (y_prob > 0.5).astype(int)
     return _Scored(y_true=y_true, y_pred=y_pred, y_prob=y_prob)
 
 
@@ -191,6 +215,7 @@ def _cached_report(
     split: str,
     text_mode: TextMode,
     speak_only: bool,
+    pooling_tokens: int,
 ) -> EvalReport | None:
     pass
     try:
@@ -205,6 +230,7 @@ def _cached_report(
         and report.split == split
         and report.text_mode == text_mode
         and bool(report.speak_only) == bool(speak_only)
+        and int(report.pooling_tokens) == int(pooling_tokens)
     )
     if not matches:
         return None
@@ -229,6 +255,9 @@ def evaluate_probe(
     import numpy as np
 
     out = Path(output_path) if output_path else Path(probe_path).parent / "eval_amongus.json"
+                                                                                  
+                                                                             
+    probe = load_probe(probe_path)
     if reuse and limit is None and out.exists():
         cached = _cached_report(
             out,
@@ -236,12 +265,12 @@ def evaluate_probe(
             split=split,
             text_mode=text_mode,
             speak_only=speak_only,
+            pooling_tokens=probe.pooling_tokens,
         )
         if cached is not None:
             logger.info("Reusing existing evaluation report {} (matching settings).", out)
             return cached
 
-    probe = load_probe(probe_path)
     rows = _load_rows(Path(dataset_dir), split, limit)
     if speak_only:
         rows = [r for r in rows if r.get("is_speak")]
@@ -259,13 +288,15 @@ def evaluate_probe(
 
     device = resolve_device(device)
     model, tokenizer = load_model_and_tokenizer(ModelConfig(name=probe.model_name), device)
-                                                                                 
-                                                        
+                                                                                  
+                                                                    
     tokenizer.truncation_side = "left"
 
-    texts = [render_eval_text(r, text_mode) for r in rows]
+    rendered = [render_eval_text_with_span(r, text_mode) for r in rows]
+    texts = [text for text, _ in rendered]
+    spans = [span for _, span in rendered]
     y_true = np.array([int(r["is_impostor"]) for r in rows])
-    activations = extract_activations(
+    activations = extract_token_activations(
         model,
         tokenizer,
         texts,
@@ -273,6 +304,8 @@ def evaluate_probe(
         pooling=probe.pooling,
         batch_size=batch_size,
         max_length=probe.max_length,
+        pooling_tokens=probe.pooling_tokens,
+        content_spans=spans,
         desc=f"Scoring {split} game logs",
     )
 
@@ -288,7 +321,9 @@ def evaluate_probe(
         text_mode=text_mode,
         split=split,
         speak_only=speak_only,
-        n=len(rows),
+        n=len(rows),                          
+        pooling_tokens=probe.pooling_tokens,
+        n_tokens=activations.n_tokens,
         **metrics,
     )
 
@@ -443,4 +478,5 @@ __all__ = [
     "evaluate_probe",
     "load_probe",
     "render_eval_text",
+    "render_eval_text_with_span",
 ]

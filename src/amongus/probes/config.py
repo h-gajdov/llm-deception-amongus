@@ -5,7 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+
+Pooling = Literal["last", "mean", "last_n"]
 
 
 class QuantizationConfig(BaseModel):
@@ -95,7 +97,12 @@ class ProbeTrainConfig(BaseModel):
                                                                                 
                                                               
     layers: list[int] | None = None
-    pooling: Literal["last", "mean"] = "last"
+                                                               
+                                                       
+                                                                                 
+                                                                               
+    pooling: Pooling = "last"
+    pooling_tokens: int = Field(default=20, ge=1)
     max_length: int = 512
     extraction_batch_size: int = Field(default=16, ge=1)
     use_chat_template: bool = True
@@ -103,14 +110,32 @@ class ProbeTrainConfig(BaseModel):
     probe: ProbeConfig = Field(default_factory=ProbeConfig)
     tracking: TrackingConfig = Field(default_factory=TrackingConfig)
 
+                                                                                
+                                                                  
+    debug_tokens: int = Field(default=0, ge=0)
+
                                                                    
     limit: int | None = Field(default=None, ge=1)
     seed: int = 0
+
+    @property
+    def tokens_per_example(self) -> int:
+        pass
+        return self.pooling_tokens if self.pooling == "last_n" else 1
+
+    @model_validator(mode="after")
+    def _check_pooling_tokens(self) -> ProbeTrainConfig:
+        pass
+        if self.pooling != "last_n" and "pooling_tokens" in self.model_fields_set:
+            msg = f"pooling_tokens only applies to pooling='last_n' (got {self.pooling!r})."
+            raise ValueError(msg)
+        return self
 
 
 __all__ = [
     "MlflowConfig",
     "ModelConfig",
+    "Pooling",
     "ProbeConfig",
     "ProbeTrainConfig",
     "QuantizationConfig",

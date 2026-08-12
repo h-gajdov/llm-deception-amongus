@@ -9,9 +9,11 @@ from typing import TYPE_CHECKING, Any
 
 from ..logging import get_logger
 from .activations import (
-    build_prompt,
+    TokenActivations,
+    build_prompt_with_span,
     default_layers,
-    extract_activations,
+    describe_selected_tokens,
+    extract_token_activations,
     load_model_and_tokenizer,
     resolve_device,
 )
@@ -70,10 +72,24 @@ class ProbeTrainResult:
     layer_metrics: list[LayerMetrics] = field(default_factory=list)
     probe_path: str = ""
     metrics_path: str = ""
+    pooling_tokens: int = 1
+    n_train_tokens: int = 0
+    n_test_tokens: int = 0
 
     def best(self) -> LayerMetrics:
         pass
         return next(m for m in self.layer_metrics if m.layer == self.best_layer)
+
+
+def example_scores(token_scores: np.ndarray, owner: np.ndarray, n_examples: int) -> np.ndarray:
+    pass
+    import numpy as np
+
+    totals = np.zeros(n_examples, dtype=np.float64)
+    counts = np.zeros(n_examples, dtype=np.float64)
+    np.add.at(totals, owner, np.asarray(token_scores, dtype=np.float64))
+    np.add.at(counts, owner, 1.0)
+    return np.where(counts > 0, totals / np.maximum(counts, 1.0), 0.5)
 
 
 def _standardize(
@@ -116,13 +132,19 @@ def train_probe(
     *,
     tracker: ExperimentTracker | None = None,
     global_step: int = 0,
+    test_owner: np.ndarray | None = None,
 ) -> tuple[TorchProbeState, LayerMetrics, int]:
     pass
     import numpy as np
     import torch
 
+                                                                                
+                                                                               
     xtr, xte, mean, std = _standardize(x_train, x_test, config.standardize)
     hidden = xtr.shape[1]
+                                                                                 
+                                            
+    y_test_tokens = y_test if test_owner is None else y_test[test_owner]
 
     torch.manual_seed(seed)
     x = torch.from_numpy(np.ascontiguousarray(xtr, dtype=np.float32))
@@ -150,7 +172,7 @@ def train_probe(
             epoch_loss += loss.item() * len(idx)
         if tracker is not None and (epoch % config.log_every == 0 or epoch == config.epochs):
             train_acc = _accuracy(linear, x, y)
-            test_acc = _accuracy(linear, xv, torch.from_numpy(y_test.astype(np.float32)))
+            test_acc = _accuracy(linear, xv, torch.from_numpy(y_test_tokens.astype(np.float32)))
             tracker.log(
                 {
                     f"layer_{layer}/train_loss": epoch_loss / x.shape[0],
@@ -161,7 +183,7 @@ def train_probe(
             )
             global_step += 1
 
-    state, metrics = _finalize_probe(linear, xv, y_test, mean, std, layer)
+    state, metrics = _finalize_probe(linear, xv, y_test, mean, std, layer, test_owner)
     logger.info(
         "Layer {:>3}: acc={:.3f} f1={:.3f} auroc={}",
         layer,
@@ -183,7 +205,13 @@ def _accuracy(linear: Any, x: Any, y: Any) -> float:
 
 
 def _finalize_probe(
-    linear: Any, xv: Any, y_test: np.ndarray, mean: Any, std: Any, layer: int
+    linear: Any,
+    xv: Any,
+    y_test: np.ndarray,
+    mean: Any,
+    std: Any,
+    layer: int,
+    test_owner: np.ndarray | None = None,
 ) -> tuple[TorchProbeState, LayerMetrics]:
     pass
     import numpy as np
@@ -195,16 +223,18 @@ def _finalize_probe(
     weight = linear.weight.detach().squeeze(0).numpy()
     bias = float(linear.bias.detach().item())
     y_prob = 1.0 / (1.0 + np.exp(-logits))
-    y_pred = (logits > 0).astype(int)
+    if test_owner is not None:
+        y_prob = example_scores(y_prob, test_owner, len(y_test))
+    y_pred = (y_prob > 0.5).astype(int)
     acc, f1, auroc = _score(y_test, y_pred, y_prob)
     state = TorchProbeState(weight=weight, bias=bias, mean=mean, std=std, layer=layer)
     return state, LayerMetrics(layer=layer, accuracy=acc, f1=f1, auroc=auroc)
 
 
 def train_layer_probes(
-    x_train: np.ndarray,
+    x_train: np.ndarray | TokenActivations,
     y_train: np.ndarray,
-    x_test: np.ndarray,
+    x_test: np.ndarray | TokenActivations,
     y_test: np.ndarray,
     layers: list[int],
     config: ProbeTrainConfig,
@@ -212,24 +242,41 @@ def train_layer_probes(
     tracker: ExperimentTracker | None = None,
 ) -> tuple[list[LayerMetrics], dict[int, TorchProbeState]]:
     pass
+    train = _as_tokens(x_train, layers)
+    test = _as_tokens(x_test, layers)
+    multi = train.max_tokens > 1 or test.max_tokens > 1
+    if multi:
+        logger.info("Train activations — {}", train.describe())
+        logger.info("Test activations  — {}", test.describe())
+
     metrics: list[LayerMetrics] = []
     probes: dict[int, TorchProbeState] = {}
     global_step = 0
     for position, layer in enumerate(layers):
+        x_tr, _ = train.layer_tokens(position)
+        x_te, owner_te = test.layer_tokens(position)
         state, layer_metrics, global_step = train_probe(
-            x_train[:, position, :],
-            y_train,
-            x_test[:, position, :],
+            x_tr,
+            train.expand(y_train),
+            x_te,
             y_test,
             layer,
             config.probe,
             config.seed,
             tracker=tracker,
             global_step=global_step,
+                                                                         
+                                                                            
+            test_owner=owner_te if multi else None,
         )
         metrics.append(layer_metrics)
         probes[layer] = state
     return metrics, probes
+
+
+def _as_tokens(x: np.ndarray | TokenActivations, layers: list[int]) -> TokenActivations:
+    pass
+    return x if isinstance(x, TokenActivations) else TokenActivations.from_pooled(x, layers)
 
 
 def _select_best(metrics: list[LayerMetrics]) -> LayerMetrics:
@@ -262,11 +309,14 @@ def _tracking_params(config: ProbeTrainConfig, device: str, layers: list[int]) -
         "model_name": config.model.name,
         "device": device,
         "quantization": (
-            "4bit" if config.model.quantization.load_in_4bit
-            else "8bit" if config.model.quantization.load_in_8bit
+            "4bit"
+            if config.model.quantization.load_in_4bit
+            else "8bit"
+            if config.model.quantization.load_in_8bit
             else "none"
         ),
         "pooling": config.pooling,
+        "pooling_tokens": config.tokens_per_example,
         "layers": layers,
         "epochs": config.probe.epochs,
         "lr": config.probe.lr,
@@ -286,11 +336,16 @@ def train_probes(config: ProbeTrainConfig) -> ProbeTrainResult:
     model, tokenizer = load_model_and_tokenizer(config.model, device)
     layers = config.layers or default_layers(model)
 
-    def activations_for(rows: list[dict[str, Any]], desc: str) -> np.ndarray:
-        texts = [
-            build_prompt(r, tokenizer, use_chat_template=config.use_chat_template) for r in rows
+    def rendered(rows: list[dict[str, Any]]) -> tuple[list[str], list[tuple[int, int] | None]]:
+        pairs = [
+            build_prompt_with_span(r, tokenizer, use_chat_template=config.use_chat_template)
+            for r in rows
         ]
-        return extract_activations(
+        return [text for text, _ in pairs], [span for _, span in pairs]
+
+    def activations_for(rows: list[dict[str, Any]], desc: str) -> TokenActivations:
+        texts, spans = rendered(rows)
+        return extract_token_activations(
             model,
             tokenizer,
             texts,
@@ -298,7 +353,24 @@ def train_probes(config: ProbeTrainConfig) -> ProbeTrainResult:
             pooling=config.pooling,
             batch_size=config.extraction_batch_size,
             max_length=config.max_length,
+            pooling_tokens=config.pooling_tokens,
+            content_spans=spans,
             desc=desc,
+        )
+
+    if config.debug_tokens and config.pooling == "last_n":
+        texts, spans = rendered(train_rows)
+        logger.info(
+            "Token selection preview ({} tokens per example):\n{}",
+            config.pooling_tokens,
+            describe_selected_tokens(
+                tokenizer,
+                texts,
+                pooling_tokens=config.pooling_tokens,
+                max_length=config.max_length,
+                content_spans=spans,
+                limit=config.debug_tokens,
+            ),
         )
 
     x_train = activations_for(train_rows, "Extracting train activations")
@@ -320,7 +392,16 @@ def train_probes(config: ProbeTrainConfig) -> ProbeTrainResult:
             }
         )
 
-    return _persist(config, metrics, probes, best, len(train_rows), len(test_rows), device)
+    return _persist(
+        config,
+        metrics,
+        probes,
+        best,
+        len(train_rows),
+        len(test_rows),
+        device,
+        token_counts=(x_train.n_tokens, x_test.n_tokens),
+    )
 
 
 def _persist(
@@ -331,6 +412,8 @@ def _persist(
     n_train: int,
     n_test: int,
     device: str,
+    *,
+    token_counts: tuple[int, int] = (0, 0),
 ) -> ProbeTrainResult:
     pass
     import joblib
@@ -346,6 +429,9 @@ def _persist(
             "model_name": config.model.name,
             "layer": best.layer,
             "pooling": config.pooling,
+                                                                                 
+                                                                             
+            "pooling_tokens": config.tokens_per_example,
             "use_chat_template": config.use_chat_template,
             "max_length": config.max_length,
         },
@@ -356,9 +442,12 @@ def _persist(
         "model_name": config.model.name,
         "device": device,
         "pooling": config.pooling,
+        "pooling_tokens": config.tokens_per_example,
         "best_layer": best.layer,
         "n_train": n_train,
         "n_test": n_test,
+        "n_train_tokens": token_counts[0],
+        "n_test_tokens": token_counts[1],
         "config": json.loads(config.model_dump_json()),
         "layer_metrics": [asdict(m) for m in metrics],
     }
@@ -374,6 +463,9 @@ def _persist(
         layer_metrics=metrics,
         probe_path=str(probe_path),
         metrics_path=str(metrics_path),
+        pooling_tokens=config.tokens_per_example,
+        n_train_tokens=token_counts[0],
+        n_test_tokens=token_counts[1],
     )
 
 
@@ -381,6 +473,7 @@ __all__ = [
     "LayerMetrics",
     "ProbeTrainResult",
     "TorchProbeState",
+    "example_scores",
     "train_layer_probes",
     "train_probe",
     "train_probes",

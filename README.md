@@ -11,6 +11,7 @@ The project follows the experimental direction of [Among Us: A Sandbox for Measu
 - [Getting started](#getting-started)
 - [Configuration](#configuration)
 - [Main workflows](#main-workflows)
+- [Interactive viewer](#interactive-viewer)
 - [Used technologies](#used-technologies)
 
 ## Overview
@@ -160,6 +161,27 @@ uv run amongus viz site
 ```
 
 Use `uv run amongus --help` and the help option on any subcommand for the complete CLI reference.
+
+## Interactive viewer
+
+The project includes an interactive browser-based viewer for exploring experiment outputs in one place. It can be used to:
+
+- Replay generated games turn by turn and inspect player positions, actions, dialogue, roles, and deception labels.
+- Explore probe-training graphs across model layers, including accuracy, F1, and AUROC curves.
+- Compare evaluation results through interactive diagrams and model-by-model summaries.
+- Browse contrastive datasets, inspect honest and dishonest response pairs, and review their source and persona composition.
+
+Rebuild the viewer from the available experiments, trained probes, evaluation results, and contrastive data:
+
+```bash
+uv run amongus viz site
+```
+
+The generated site is written to `viewer/index.html`. Open that file in a browser to explore the visualizations interactively. To build a smaller preview, limit the number of games included from each dataset:
+
+```bash
+uv run amongus viz site --limit 10
+```
 
 ## Used technologies
 

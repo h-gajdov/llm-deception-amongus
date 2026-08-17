@@ -28,7 +28,7 @@ use_chat_template: true
 
 layers: null
 pooling: last
-max_length: 2048
+max_length: 16384
 extraction_batch_size: 16
 
 probe:

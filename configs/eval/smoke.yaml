@@ -9,8 +9,6 @@
 probes:
   discover: []
   paths:
-
-
     - data/probes/gpt2/probe.joblib
 
 datasets:
@@ -18,7 +16,7 @@ datasets:
 
 
   include:
-    - heuristic_validation_8_games
+
     - "*llama_phi*"
   max_rows: 200
 

@@ -24,10 +24,10 @@
 
 
 dataset_dir: data/processed/contrastive
-output_dir: data/probes/phi-4-last10
+output_dir: data/probes/gpt2-last20
 
 model:
-  name: microsoft/phi-4
+  name: gpt2
   device: cuda
   dtype: auto
 
@@ -56,12 +56,12 @@ tracking:
   wandb:
     enabled: true
     project: amongus-probes
-    run_name: phi-4-last10
+    run_name: gpt2-last20
     mode: online
   mlflow:
     enabled: true
     experiment: amongus-probes
-    run_name: phi-4-last10
+    run_name: gpt2-last20
 
 
 seed: 0

@@ -13,7 +13,17 @@ probes:
   discover: [data/probes]
   paths: []
 
-  exclude: [comparison, eval_suite]
+  exclude:
+    [
+      comparison,
+      eval_suite,
+      gemma4-12B,
+      gpt2,
+      gpt2_old,
+      phi-4,
+      qwen_smoke,
+      qwen8b,
+    ]
 
 datasets:
   roots: [expt-logs]

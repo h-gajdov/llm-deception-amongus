@@ -10,6 +10,10 @@ import typer
 from ..config import GenerationConfig, load_config
 from ..logging import configure_logging, get_logger
 
+                                                                                 
+                                                                                  
+from ..viz.contrastive_pages import DEFAULT_PAIR_LIMIT
+
 app = typer.Typer(
     name="amongus",
     help="Among Us deception sandbox: dataset generation and preprocessing.",
@@ -381,13 +385,36 @@ def viz_site(
     limit: int | None = typer.Option(
         None, "--limit", "-n", help="Only include the first N games per dataset."
     ),
+    probes: Path = typer.Option(
+        Path("data/probes"),
+        "--probes",
+        "-p",
+        help="Probe folder for the training and eval-suite pages (top level only).",
+    ),
+    contrastive: Path = typer.Option(
+        Path("data/processed/contrastive"),
+        "--contrastive",
+        help="Built contrastive dataset (dataset 2) for the training-data page.",
+    ),
+    contrastive_pairs: int = typer.Option(
+        DEFAULT_PAIR_LIMIT,
+        "--contrastive-pairs",
+        help="Max contrast pairs to embed in that page (0 = all).",
+    ),
     log_level: str = typer.Option("INFO", "--log-level", help="Logging level."),
 ) -> None:
     pass
     from ..viz.site import build_site
 
     configure_logging(log_level)
-    directory = build_site(root, output, limit=limit)
+    directory = build_site(
+        root,
+        output,
+        limit=limit,
+        probes_dir=probes,
+        contrastive_dir=contrastive,
+        contrastive_pairs=contrastive_pairs,
+    )
     typer.echo(f"Wrote review site to: {directory / 'index.html'}")
 
 

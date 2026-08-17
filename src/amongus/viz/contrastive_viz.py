@@ -18,7 +18,7 @@ _HONEST_LABEL = 0
 _SOURCE_HEX = {"tqa": "#4f8cff", "dqa": "#b57bff", "repeng": "#ffb347"}
 
 
-def load_contrastive_rows(path: str | Path) -> list[dict[str, Any]]:
+def load_contrastive_splits(path: str | Path) -> dict[str, list[dict[str, Any]]]:
     pass
     try:
         import pandas as pd
@@ -27,20 +27,26 @@ def load_contrastive_rows(path: str | Path) -> list[dict[str, Any]]:
         raise ImportError(msg) from exc
 
     p = Path(path)
-    frames: list[Any] = []
+    frames: dict[str, Any] = {}
     if p.is_file() and p.suffix == ".parquet":
-        frames.append(pd.read_parquet(p))
+        frames[p.stem] = pd.read_parquet(p)
     elif p.is_dir():
         parquets = sorted(p.glob("*.parquet"))
-        frames = [pd.read_parquet(x) for x in parquets] if parquets else _frames_from_disk(p)
+        frames = (
+            {x.stem: pd.read_parquet(x) for x in parquets} if parquets else _frames_from_disk(p)
+        )
     if not frames:
         msg = f"No parquet or saved dataset found at {p}"
         raise FileNotFoundError(msg)
-    combined = pd.concat(frames, ignore_index=True)
-    return combined.to_dict("records")
+    return {name: frame.to_dict("records") for name, frame in frames.items()}
 
 
-def _frames_from_disk(directory: Path) -> list[Any]:
+def load_contrastive_rows(path: str | Path) -> list[dict[str, Any]]:
+    pass
+    return [row for rows in load_contrastive_splits(path).values() for row in rows]
+
+
+def _frames_from_disk(directory: Path) -> dict[str, Any]:
     pass
     try:
         from datasets import load_from_disk
@@ -48,8 +54,9 @@ def _frames_from_disk(directory: Path) -> list[Any]:
         msg = "The 'datasets' library is required to read a saved DatasetDict."
         raise ImportError(msg) from exc
     loaded: Any = load_from_disk(str(directory))
-    splits = list(loaded.values()) if hasattr(loaded, "values") else [loaded]
-    return [split.to_pandas() for split in splits]
+    if not hasattr(loaded, "items"):
+        return {directory.name: loaded.to_pandas()}
+    return {str(name): split.to_pandas() for name, split in loaded.items()}
 
 
 def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
@@ -104,6 +111,7 @@ def build_pairs(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             group[side] = {
                 "system_prompt": row.get("system_prompt", "") or "",
                 "answer": row.get("answer", "") or "",
+                "split": row.get("split"),
             }
     return list(groups.values())
 
@@ -298,6 +306,7 @@ __all__ = [
     "build_contrastive_html",
     "build_pairs",
     "load_contrastive_rows",
+    "load_contrastive_splits",
     "render_summary_text",
     "summarize",
 ]

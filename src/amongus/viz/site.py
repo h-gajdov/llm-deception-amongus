@@ -9,7 +9,9 @@ from typing import Any
 
 from ..data.ingest import HOLISTIC_DIRNAME, find_log_datasets, iter_game_summaries
 from ..logging import get_logger
+from .contrastive_pages import DEFAULT_PAIR_LIMIT, collect_contrastive_page
 from .layout import GRID_COLS, GRID_ROWS, ROOM_GRID, hex_for
+from .probe_pages import PALETTE_DARK, PALETTE_LIGHT, collect_probe_pages
 from .reconstruct import (
     STARTING_ROOM,
     EventKind,
@@ -46,6 +48,9 @@ def build_site(
     output_dir: str | Path | None = None,
     *,
     limit: int | None = None,
+    probes_dir: str | Path | None = None,
+    contrastive_dir: str | Path | None = None,
+    contrastive_pairs: int = DEFAULT_PAIR_LIMIT,
 ) -> Path:
     pass
     source_root = Path(root)
@@ -64,6 +69,16 @@ def build_site(
             catalogue.append(entry)
 
     _write_js(out / "data" / "index.js", "__AMONGUS_INDEX__", {"datasets": catalogue})
+                                                                                  
+                                                                         
+    probes = None if probes_dir is None else collect_probe_pages(probes_dir)
+    _write_js(out / "data" / "probes.js", "__AMONGUS_PROBES__", probes)
+    contrastive = (
+        None
+        if contrastive_dir is None
+        else collect_contrastive_page(contrastive_dir, pair_limit=contrastive_pairs)
+    )
+    _write_js(out / "data" / "contrastive.js", "__AMONGUS_CONTRASTIVE__", contrastive)
     (out / "index.html").write_text(_render_index(source_root.name), encoding="utf-8")
     logger.info("Wrote review site for {} dataset(s) to {}", len(catalogue), out)
     return out
@@ -519,7 +534,15 @@ def _render_index(root_name: str) -> str:
         GRID_ROWS=GRID_ROWS,
         DECEPTIVE_AT=DECEPTIVE_AT,
         TRUTHFUL_AT=TRUTHFUL_AT,
+        PALETTE_LIGHT=_palette_css(PALETTE_LIGHT),
+        PALETTE_DARK=_palette_css(PALETTE_DARK),
+        PALETTE_SIZE=len(PALETTE_LIGHT),
     )
+
+
+def _palette_css(palette: list[str]) -> str:
+    pass
+    return "\n  ".join(f"--p{i + 1}: {hex_code};" for i, hex_code in enumerate(palette))
 
 
 def _escape(text: str) -> str:
@@ -562,6 +585,8 @@ _INDEX = Template(
   --axis:       #cbaaa3;
   --band:       #ead6d1;   
   --tick:       #b9968f;
+  
+  $PALETTE_LIGHT
   color-scheme: light;
 }
 
@@ -581,6 +606,8 @@ _INDEX = Template(
   --axis:       #573c47;
   --band:       #31212a;
   --tick:       #6d4c58;
+  
+  $PALETTE_DARK
   color-scheme: dark;
 }
 :root {
@@ -620,9 +647,15 @@ select {
   background-position: right 14px center, right 9px center;
   background-size: 5px 5px, 5px 5px; background-repeat: no-repeat;
 }
-select:focus-visible, button:focus-visible, .turn:focus-visible {
+select:focus-visible, button:focus-visible, input:focus-visible, .turn:focus-visible {
   outline: 2px solid var(--lie); outline-offset: 2px;
 }
+input[type="search"] {
+  font-family: var(--mono); font-size: 13px; color: var(--ink);
+  background: var(--panel); border: 1px solid var(--ink); border-radius: 0;
+  padding: 7px 10px; min-width: 240px; appearance: none;
+}
+input[type="search"]::placeholder { color: var(--ink-faint); }
 
 .seg { display: flex; }
 .seg button { border-right-width: 0; padding: 7px 11px; }
@@ -760,6 +793,115 @@ main { display: grid; grid-template-columns: minmax(0,1.05fr) minmax(320px,.95fr
 @media (prefers-reduced-motion: no-preference) {
   .turn, .room, button { transition: background-color .12s ease, color .12s ease; }
 }
+
+
+.tabs { display: flex; align-self: center; }
+.tabs button { border-right-width: 0; }
+.tabs button:last-child { border-right-width: 1px; }
+.tabs button[aria-selected="true"] { background: var(--ink); color: var(--paper); }
+[hidden] { display: none !important; }
+
+.page { padding: 18px 20px 48px; }
+.card { border: 1px solid var(--rule); background: var(--panel); padding: 14px 16px 16px;
+        margin-bottom: 18px; }
+.card > h2 { font-size: 12px; letter-spacing: .16em; text-transform: uppercase;
+             color: var(--ink-soft); font-weight: 400; margin: 0 0 3px; }
+.card .sub { color: var(--ink-faint); font-size: 11px; margin-bottom: 12px; max-width: 96ch; }
+.controls { display: flex; gap: 18px; align-items: flex-end; flex-wrap: wrap;
+            margin-bottom: 12px; }
+.controls .picker select { min-width: 200px; }
+
+
+.legend { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+        border: 1px solid var(--rule); background: transparent; color: var(--ink);
+        font-family: var(--mono); font-size: 11px; letter-spacing: 0; text-transform: none;
+        padding: 3px 8px; }
+.chip:hover { background: var(--paper); color: var(--ink); }
+.chip b { width: 10px; height: 10px; display: inline-block; }
+.chip[aria-pressed="false"] { color: var(--ink-faint); border-style: dashed; }
+.chip[aria-pressed="false"] b { opacity: .25; }
+.hint { color: var(--ink-faint); font-size: 11px; }
+
+.plot { position: relative; overflow-x: auto; }
+.plot svg { display: block; }
+.plot text { font-family: var(--mono); }
+.ax { fill: var(--ink-faint); font-size: 10px; }
+.axname { fill: var(--ink-soft); font-size: 10px; letter-spacing: .14em;
+          text-transform: uppercase; }
+.gl { stroke: var(--rule-soft); stroke-width: 1; }
+.al { stroke: var(--rule); stroke-width: 1; }
+.chance { stroke: var(--ink-faint); stroke-width: 1; stroke-dasharray: 5 4; }
+.vlabel { fill: var(--ink-soft); font-size: 8.5px; }
+.ptitle { fill: var(--ink); font-size: 11px; }
+.curve { fill: none; stroke-width: 2; }
+.curve.m-f1 { stroke-dasharray: 6 3; stroke-width: 1.6; }
+.curve.m-accuracy { stroke-dasharray: 2 3; stroke-width: 1.6; }
+.cursor { stroke: var(--ink); stroke-width: 1; stroke-dasharray: 3 3; }
+.bestring { fill: none; stroke-width: 1.6; }
+.errbar { stroke: var(--ink-soft); stroke-width: 1; }
+.hit { fill: transparent; cursor: crosshair; }
+
+
+.tip { position: fixed; z-index: 40; pointer-events: none; max-width: 340px;
+       background: var(--panel); color: var(--ink); border: 1px solid var(--ink);
+       padding: 7px 9px; font-size: 11px; line-height: 1.45; }
+.tip .t { font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
+          color: var(--ink-faint); }
+.tip table { border-collapse: collapse; margin-top: 4px; }
+.tip td { padding: 1px 0; }
+.tip td.k { color: var(--ink-soft); padding-right: 10px; }
+.tip td.v { text-align: right; font-variant-numeric: tabular-nums; }
+
+table.grid { border-collapse: collapse; width: 100%; font-size: 11.5px;
+             font-variant-numeric: tabular-nums; }
+table.grid th, table.grid td { padding: 5px 8px; text-align: right;
+                               border-bottom: 1px solid var(--rule-soft); white-space: nowrap; }
+table.grid th { color: var(--ink-faint); font-weight: 400; font-size: 10px;
+                letter-spacing: .1em; text-transform: uppercase;
+                border-bottom: 1px solid var(--rule); }
+table.grid th:first-child, table.grid td:first-child { text-align: left; }
+table.grid tbody tr:hover { background: var(--paper); }
+
+table.grid thead th { position: sticky; top: 0; z-index: 1; background: var(--panel); }
+table.grid .sw, .tip .sw { display: inline-block; width: 9px; height: 9px; margin-right: 7px;
+                           vertical-align: middle; }
+table.grid .up { color: var(--truth); } table.grid .down { color: var(--lie); }
+.scroll { overflow-x: auto; }
+.scroll.tall { max-height: 58vh; overflow-y: auto; }
+.warn { color: var(--lie); font-size: 11px; margin-bottom: 10px; max-width: 96ch; }
+.note { border-left: 2px solid var(--hedge); padding-left: 10px; color: var(--ink-soft);
+        font-size: 11.5px; max-width: 96ch; margin: 0 0 12px; }
+
+
+.prow { display: grid; grid-template-columns: auto minmax(0,1fr) auto; gap: 10px;
+        align-items: baseline; padding: 7px 0; border-top: 1px solid var(--rule-soft); }
+.prow:first-child { border-top: 0; }
+.prow .ptext { font-family: var(--serif); font-size: 14px; font-style: italic; }
+.prow .pn { color: var(--ink-faint); font-size: 11px; white-space: nowrap; }
+.pairs { display: flex; flex-direction: column; gap: 10px; }
+.cpair { border: 1px solid var(--rule); background: var(--panel); }
+.cpair .meta { display: flex; gap: 7px; align-items: center; flex-wrap: wrap;
+               padding: 7px 10px; border-bottom: 1px solid var(--rule-soft); }
+.cpair .key { color: var(--ink-faint); font-size: 11px; margin-left: auto; }
+.cpair .q { padding: 9px 10px 10px; font-family: var(--serif); font-size: 15.5px; }
+.cpair .q b { font-family: var(--mono); font-size: 9px; letter-spacing: .14em;
+              font-weight: 400; text-transform: uppercase; color: var(--ink-faint);
+              display: block; margin-bottom: 3px; }
+.csides { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid var(--rule-soft); }
+@media (max-width: 820px) { .csides { grid-template-columns: 1fr; } }
+.cside { padding: 9px 10px 11px; border-left: 3px solid var(--rule); }
+.cside + .cside { box-shadow: inset 1px 0 0 var(--rule-soft); }
+.cside.honest { border-left-color: var(--truth); }
+.cside.dishonest { border-left-color: var(--lie); }
+.cside .chead { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
+.cside .tag { font-size: 9px; letter-spacing: .14em; text-transform: uppercase; }
+.cside.honest .tag { color: var(--truth); }
+.cside.dishonest .tag { color: var(--lie); }
+.cside .sp { color: var(--ink-faint); font-size: 10px; letter-spacing: .1em;
+             text-transform: uppercase; margin-left: auto; }
+.cside .ans { font-family: var(--serif); font-size: 15.5px; margin-top: 6px; }
+.b-cross { color: var(--hedge); }
 </style>
 </head>
 <body>
@@ -768,13 +910,20 @@ main { display: grid; grid-template-columns: minmax(0,1.05fr) minmax(320px,.95fr
     <div class="wordmark"><b>Among&nbsp;Us</b> <span>/ deception review</span></div>
     <div class="expt">$EXPERIMENT</div>
   </div>
+  <nav class="tabs" id="tabs" role="tablist" aria-label="Pages">
+    <button type="button" role="tab" id="tab-review" aria-selected="true">Games</button>
+    <button type="button" role="tab" id="tab-contrastive"
+            aria-selected="false">Contrastive data</button>
+    <button type="button" role="tab" id="tab-training" aria-selected="false">Probe training</button>
+    <button type="button" role="tab" id="tab-suite" aria-selected="false">Eval suite</button>
+  </nav>
   <div class="outcome" id="outcome"></div>
   <div class="pickers">
-    <div class="picker">
+    <div class="picker" id="pickDataset">
       <label class="label" for="dataset">Dataset</label>
       <select id="dataset"></select>
     </div>
-    <div class="picker">
+    <div class="picker" id="pickGame">
       <label class="label" for="game">Game</label>
       <select id="game"></select>
     </div>
@@ -788,6 +937,7 @@ main { display: grid; grid-template-columns: minmax(0,1.05fr) minmax(320px,.95fr
   </div>
 </header>
 
+<div id="view-review">
 <section class="trace-wrap">
   <div class="trace-head">
     <span class="label" id="traceLabel">Deception trace — every turn, left to right</span>
@@ -821,6 +971,160 @@ main { display: grid; grid-template-columns: minmax(0,1.05fr) minmax(320px,.95fr
     <div class="turns" id="turns"></div>
   </div>
 </main>
+</div>
+
+
+<section class="page" id="view-contrastive" hidden>
+  <div class="card">
+    <h2>Dataset 2 — what the probes were trained on</h2>
+    <div class="sub" id="contraSub"></div>
+    <div class="sub">Honesty is unambiguous here: the same question is answered once honestly
+      and once dishonestly, so the label is the construction rather than a judgement.
+      <b>Label 1 is deception</b> on both datasets, which is what lets a probe keep its sign
+      from this page through to the eval suite. <b>TQA</b> contrasts a correct answer with an
+      incorrect one and carries no persona at all (lying). <b>DQA</b> asks the same questions
+      with an honest or a dishonest persona attached (deception). <b>RepEng</b> holds the
+      statement itself fixed and swaps only the persona, so both sides read identically —
+      that is the point, the whole contrast is the intent behind them.</div>
+    <div class="legend">
+      <span class="chip" style="cursor:default"><b style="background:var(--truth)"></b>
+        honest — label 0</span>
+      <span class="chip" style="cursor:default"><b style="background:var(--lie)"></b>
+        dishonest — label 1</span>
+    </div>
+    <div class="plot" id="compPlot"></div>
+    <p class="note" id="splitNote"></p>
+    <div class="scroll"><table class="grid" id="contraTable"></table></div>
+  </div>
+
+  <div class="card">
+    <h2>Personas</h2>
+    <div class="sub">The system prompts that turn one statement into a contrast pair. Every
+      pair below cites the one it was built with.</div>
+    <div id="personaList"></div>
+  </div>
+
+  <div class="card">
+    <h2>Contrast pairs</h2>
+    <div class="sub" id="pairsSub"></div>
+    <div class="controls">
+      <div class="picker">
+        <span class="label">Source</span>
+        <div class="seg" role="group" aria-label="Source" id="contraSource"></div>
+      </div>
+      <div class="picker">
+        <span class="label">Split</span>
+        <div class="seg" role="group" aria-label="Split" id="contraSplit"></div>
+      </div>
+      <div class="picker">
+        <label class="label" for="contraSearch">Search</label>
+        <input type="search" id="contraSearch" placeholder="question, answer or category">
+      </div>
+      <span class="hint" id="contraCount"></span>
+    </div>
+    <div class="pairs" id="pairList"></div>
+  </div>
+</section>
+
+
+<section class="page" id="view-training" hidden>
+  <div class="card">
+    <h2>Probe performance across layers</h2>
+    <div class="sub" id="trainSub"></div>
+    <div class="controls">
+      <div class="picker">
+        <span class="label">Metric</span>
+        <div class="seg" role="group" aria-label="Metric" id="layerMetric">
+          <button type="button" data-value="auroc" aria-pressed="true">AUROC</button>
+          <button type="button" data-value="accuracy" aria-pressed="false">Accuracy</button>
+          <button type="button" data-value="f1" aria-pressed="false">F1</button>
+          <button type="button" data-value="all" aria-pressed="false">All three</button>
+        </div>
+      </div>
+      <div class="picker">
+        <span class="label">Y axis</span>
+        <div class="seg" role="group" aria-label="Y axis" id="layerZoom">
+          <button type="button" data-value="fit" aria-pressed="true">Fit</button>
+          <button type="button" data-value="full" aria-pressed="false">0 — 1</button>
+        </div>
+      </div>
+      <span class="hint">Click a probe to hide it · double-click to isolate it</span>
+    </div>
+    <div class="legend" id="trainLegend"></div>
+    <div class="plot" id="layerPlot"></div>
+  </div>
+
+  <div class="card">
+    <h2>Best layer per probe</h2>
+    <div class="sub">Each probe at its strongest layer. <b>Peak layer</b> reads every layer's
+      score and annotates the layer that won for that metric — the three can differ.
+      <b>Persisted layer</b> is the single layer written into <code>probe.joblib</code>
+      (AUROC, then accuracy, then F1), which is the one every evaluation actually
+      scores with.</div>
+    <div class="controls">
+      <div class="picker">
+        <span class="label">Read at</span>
+        <div class="seg" role="group" aria-label="Layer choice" id="bestMode">
+          <button type="button" data-value="peak" aria-pressed="true">Peak layer</button>
+          <button type="button" data-value="best" aria-pressed="false">Persisted layer</button>
+        </div>
+      </div>
+      <span class="hint">Click a group to isolate that probe in the curves above</span>
+    </div>
+    <div class="legend" id="metricLegend"></div>
+    <div class="plot" id="bestPlot"></div>
+  </div>
+
+  <div class="card">
+    <h2>Training runs</h2>
+    <div class="sub">Read from <code>metrics.json</code> beside each
+      <code>probe.joblib</code>.</div>
+    <div class="scroll"><table class="grid" id="trainTable"></table></div>
+  </div>
+</section>
+
+
+<section class="page" id="view-suite" hidden>
+  <div class="card">
+    <h2>Deception probes on the gameplay logs — control above, trained below</h2>
+    <div class="sub" id="suiteSub"></div>
+    <div class="warn" id="suiteWarn" hidden></div>
+    <div class="controls">
+      <div class="picker">
+        <label class="label" for="suiteRun">Suite run</label>
+        <select id="suiteRun"></select>
+      </div>
+      <div class="picker">
+        <span class="label">Metric</span>
+        <div class="seg" role="group" aria-label="Metric" id="suiteMetric">
+          <button type="button" data-value="auroc" aria-pressed="true">AUROC</button>
+          <button type="button" data-value="accuracy" aria-pressed="false">Accuracy</button>
+          <button type="button" data-value="f1" aria-pressed="false">F1</button>
+        </div>
+      </div>
+      <span class="hint">Click a probe to hide it · double-click to isolate it</span>
+    </div>
+    <div class="legend" id="suiteLegend"></div>
+    <div class="plot" id="suitePlot"></div>
+    <div class="sub" style="margin-top:10px">Dashed line: chance (0.5). Error bars on the
+      control show the spread across the random directions. A trained bar is only a result
+      next to the control directly above it.</div>
+  </div>
+
+  <div class="card">
+    <h2>Lift — trained minus control</h2>
+    <div class="sub" id="liftSub"></div>
+    <div class="scroll"><table class="grid" id="liftTable"></table></div>
+  </div>
+
+  <div class="card">
+    <h2>Every row</h2>
+    <div class="sub" id="rowsSub"></div>
+    <div class="scroll tall"><table class="grid" id="suiteTable"></table></div>
+  </div>
+</section>
+
+<div class="tip" id="tip" hidden></div>
 
 <script>
 var ROOMS = $ROOMS;
@@ -1252,6 +1556,926 @@ function nextLie() {
   }
 }
 
+var PROBES = null, PSLOTS = $PALETTE_SIZE, VIEW = "review";
+var TRAIN_OFF = {}, SUITE_OFF = {};
+var LAYER_METRIC = "auroc", LAYER_ZOOM = "fit", BEST_MODE = "peak";
+var SUITE_METRIC = "auroc", SUITE = null;
+var METRICS = [["accuracy", "Accuracy"], ["f1", "F1"], ["auroc", "AUROC"]];
+
+var MCOLOR = { accuracy: "var(--p1)", f1: "var(--p2)", auroc: "var(--p6)" };
+var TIPS = {};
+
+window.__AMONGUS_PROBES__ = function (payload) { PROBES = payload; initProbePages(); };
+
+function pcolor(name) {
+  var slot = (PROBES && PROBES.slots) ? PROBES.slots[name] : undefined;
+  if (slot === undefined || slot === null) return "var(--ink-soft)";
+  return "var(--p" + ((slot % PSLOTS) + 1) + ")";
+}
+function fmt(v, d) {
+  if (v === null || v === undefined || v !== v) return "—";
+  return Number(v).toFixed(d === undefined ? 3 : d);
+}
+function num(v) { return (v === null || v === undefined) ? "—" : Number(v).toLocaleString(); }
+function esc(s) {
+  return String(s === null || s === undefined ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+function metricName(key) {
+  for (var i = 0; i < METRICS.length; i++) if (METRICS[i][0] === key) return METRICS[i][1];
+  return key;
+}
+
+
+
+function tipRows(pairs) {
+  var out = "<table>";
+  pairs.forEach(function (p) {
+    if (!p || p[1] === null || p[1] === undefined) return;
+    var chip = p[2] ? '<span class="sw" style="background:' + p[2] + '"></span>' : "";
+    out += '<tr><td class="k">' + chip + esc(p[0]) + '</td><td class="v">' + p[1] + "</td></tr>";
+  });
+  return out + "</table>";
+}
+function tipShow(html, ev) {
+  var t = document.getElementById("tip");
+  t.innerHTML = html;
+  t.hidden = false;
+  var pad = 16, x = ev.clientX + pad, y = ev.clientY + pad;
+  if (x + t.offsetWidth > window.innerWidth - 8) x = ev.clientX - t.offsetWidth - pad;
+  if (y + t.offsetHeight > window.innerHeight - 8) y = ev.clientY - t.offsetHeight - pad;
+  t.style.left = Math.max(8, x) + "px";
+  t.style.top = Math.max(8, y) + "px";
+}
+function tipHide() { document.getElementById("tip").hidden = true; }
+
+function tipify(container) {
+  container.addEventListener("mousemove", function (ev) {
+    var key = ev.target.getAttribute && ev.target.getAttribute("data-tip");
+    if (!key) { tipHide(); return; }
+    var at = key.split(":");
+    tipShow(TIPS[at[0]][Number(at[1])], ev);
+  });
+  container.addEventListener("mouseleave", tipHide);
+}
+function tipReset(chart) { TIPS[chart] = []; }
+function tipSlot(chart, html) {
+  TIPS[chart].push(html);
+  return chart + ":" + (TIPS[chart].length - 1);
+}
+
+
+function buildLegend(host, entries, off, onchange) {
+  host.innerHTML = "";
+  entries.forEach(function (entry) {
+    var chip = el("button", "chip");
+    chip.type = "button";
+    chip.setAttribute("aria-pressed", off[entry.key] ? "false" : "true");
+    var sw = el("b");
+    sw.style.background = entry.color;
+    chip.appendChild(sw);
+    chip.appendChild(el("span", null, entry.label));
+    if (entry.title) chip.title = entry.title;
+    chip.onclick = function () {
+      if (off[entry.key]) delete off[entry.key]; else off[entry.key] = true;
+      onchange();
+    };
+    chip.ondblclick = function () {
+      entries.forEach(function (e) { off[e.key] = true; });
+      delete off[entry.key];
+      onchange();
+    };
+    host.appendChild(chip);
+  });
+}
+function segment(host, current, apply) {
+  Array.prototype.forEach.call(host.querySelectorAll("button"), function (btn) {
+    btn.setAttribute("aria-pressed", String(btn.dataset.value === current));
+    btn.onclick = function () { apply(btn.dataset.value); };
+  });
+}
+
+
+function ticks(lo, hi, count) {
+  var out = [], step = (hi - lo) / count;
+  for (var i = 0; i <= count; i++) out.push(lo + step * i);
+  return out;
+}
+function svgOpen(w, h, scale) {
+  var attrs = scale
+    ? 'width="100%" viewBox="0 0 ' + w + " " + h + '"'
+    : 'width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + " " + h + '"';
+  return "<svg " + attrs + ' role="img" xmlns="http://www.w3.org/2000/svg">';
+}
+function txt(x, y, cls, body, extra) {
+  return '<text class="' + cls + '" x="' + x + '" y="' + y + '"' + (extra || "") + ">"
+    + esc(body) + "</text>";
+}
+
+
+function initProbePages() {
+  var runs = (PROBES && PROBES.training) || [];
+  var suites = (PROBES && PROBES.suites) || [];
+  document.getElementById("tab-training").hidden = !runs.length;
+  document.getElementById("tab-suite").hidden = !suites.length;
+  if (runs.length) initTraining(runs);
+  if (suites.length) initSuite(suites);
+}
+
+function visibleRuns() {
+  return PROBES.training.filter(function (r) { return !TRAIN_OFF[r.name]; });
+}
+
+function initTraining(runs) {
+  document.getElementById("trainSub").textContent =
+    runs.length + " probe" + (runs.length === 1 ? "" : "s") + " · "
+    + "one linear probe fitted per layer, scored on the held-out split of the "
+    + "contrastive dataset · " + PROBES.root;
+  buildLegend(
+    document.getElementById("trainLegend"),
+    runs.map(function (r) {
+      return {
+        key: r.name, label: r.name, color: pcolor(r.name),
+        title: r.model + " · " + r.layers.length + " layers · pooling " + r.pooling
+          + (r.pooling_tokens ? " (" + r.pooling_tokens + " tokens)" : "")
+      };
+    }),
+    TRAIN_OFF,
+    drawTraining
+  );
+  
+  var key = document.getElementById("metricLegend");
+  key.innerHTML = "";
+  METRICS.forEach(function (m) {
+    var chip = el("span", "chip");
+    chip.style.cursor = "default";
+    var sw = el("b");
+    sw.style.background = MCOLOR[m[0]];
+    chip.appendChild(sw);
+    chip.appendChild(el("span", null, m[1]));
+    key.appendChild(chip);
+  });
+  syncTrainSegments();
+  tipify(document.getElementById("bestPlot"));
+  drawTraining();
+  buildTrainTable();
+}
+
+
+function syncTrainSegments() {
+  segment(document.getElementById("layerMetric"), LAYER_METRIC, function (v) {
+    LAYER_METRIC = v; drawTraining();
+  });
+  segment(document.getElementById("layerZoom"), LAYER_ZOOM, function (v) {
+    LAYER_ZOOM = v; drawTraining();
+  });
+  segment(document.getElementById("bestMode"), BEST_MODE, function (v) {
+    BEST_MODE = v; drawTraining();
+  });
+}
+
+function drawTraining() {
+  syncTrainSegments();
+  Array.prototype.forEach.call(
+    document.getElementById("trainLegend").querySelectorAll(".chip"),
+    function (chip, i) {
+      chip.setAttribute("aria-pressed", TRAIN_OFF[PROBES.training[i].name] ? "false" : "true");
+    }
+  );
+  drawLayerChart();
+  drawBestChart();
+}
+
+var LW = 1000, LH = 430, LML = 58, LMR = 20, LMT = 18, LMB = 48;
+
+function drawLayerChart() {
+  var host = document.getElementById("layerPlot");
+  var runs = visibleRuns();
+  if (!runs.length) { host.innerHTML = '<div class="empty">No probe selected.</div>'; return; }
+
+  var keys = LAYER_METRIC === "all" ? ["accuracy", "f1", "auroc"] : [LAYER_METRIC];
+  var maxLayer = 1, lo = 1, hi = 0;
+  runs.forEach(function (r) {
+    maxLayer = Math.max(maxLayer, r.layers[r.layers.length - 1]);
+    keys.forEach(function (k) {
+      r.series[k].forEach(function (v) {
+        if (v === null) return;
+        lo = Math.min(lo, v); hi = Math.max(hi, v);
+      });
+    });
+  });
+  if (hi <= 0) { host.innerHTML = '<div class="empty">No scores to draw.</div>'; return; }
+  var y0 = 0, y1 = 1;
+  if (LAYER_ZOOM === "fit") {
+    
+    y0 = Math.max(0, lo - 0.02);
+    y1 = Math.min(1, hi + 0.02);
+  }
+  var pw = LW - LML - LMR, ph = LH - LMT - LMB;
+  var sx = function (layer) {
+    return LML + (maxLayer <= 1 ? 0 : (layer - 1) / (maxLayer - 1) * pw);
+  };
+  var sy = function (v) { return LMT + ph - (v - y0) / (y1 - y0) * ph; };
+
+  var out = [svgOpen(LW, LH, true)];
+  ticks(y0, y1, 5).forEach(function (v) {
+    out.push('<line class="gl" x1="' + LML + '" y1="' + sy(v).toFixed(1) + '" x2="'
+      + (LML + pw) + '" y2="' + sy(v).toFixed(1) + '"/>');
+    out.push(txt(LML - 8, sy(v) + 3.5, "ax", fmt(v, 2), ' text-anchor="end"'));
+  });
+  
+  if (0.5 >= y0 && 0.5 <= y1) {
+    out.push('<line class="chance" x1="' + LML + '" y1="' + sy(0.5) + '" x2="' + (LML + pw)
+      + '" y2="' + sy(0.5) + '"/>');
+    out.push(txt(LML + pw - 2, sy(0.5) - 4, "vlabel", "chance 0.5", ' text-anchor="end"'));
+  }
+  var step = maxLayer <= 12 ? 1 : (maxLayer <= 26 ? 2 : 5);
+  for (var layer = 1; layer <= maxLayer; layer += step) {
+    out.push('<line class="al" x1="' + sx(layer).toFixed(1) + '" y1="' + (LMT + ph)
+      + '" x2="' + sx(layer).toFixed(1) + '" y2="' + (LMT + ph + 4) + '"/>');
+    out.push(txt(sx(layer), LMT + ph + 16, "ax", layer, ' text-anchor="middle"'));
+  }
+  out.push('<line class="al" x1="' + LML + '" y1="' + (LMT + ph) + '" x2="' + (LML + pw)
+    + '" y2="' + (LMT + ph) + '"/>');
+  out.push(txt(LML + pw / 2, LH - 8, "axname", "Layer", ' text-anchor="middle"'));
+  out.push(txt(0, 0, "axname", metricName(LAYER_METRIC === "all" ? "score" : LAYER_METRIC),
+    ' transform="translate(14,' + (LMT + ph / 2) + ') rotate(-90)" text-anchor="middle"'));
+
+  runs.forEach(function (r) {
+    keys.forEach(function (k) {
+      var pts = [];
+      r.layers.forEach(function (layer, i) {
+        var v = r.series[k][i];
+        if (v !== null) pts.push(sx(layer).toFixed(1) + "," + sy(v).toFixed(1));
+      });
+      if (pts.length < 2) return;
+      out.push('<polyline class="curve m-' + k + '" points="' + pts.join(" ")
+        + '" stroke="' + pcolor(r.name) + '"/>');
+    });
+    
+    var idx = r.layers.indexOf(r.best_layer);
+    if (idx >= 0) {
+      keys.forEach(function (k) {
+        var v = r.series[k][idx];
+        if (v === null) return;
+        out.push('<circle class="bestring" cx="' + sx(r.best_layer).toFixed(1) + '" cy="'
+          + sy(v).toFixed(1) + '" r="4" stroke="' + pcolor(r.name) + '"/>');
+      });
+    }
+  });
+  out.push('<g id="layerCursor"></g>');
+  out.push('<rect class="hit" id="layerHit" x="' + LML + '" y="' + LMT + '" width="' + pw
+    + '" height="' + ph + '"/>');
+  out.push("</svg>");
+  host.innerHTML = out.join("");
+
+  var hit = document.getElementById("layerHit");
+  hit.addEventListener("mousemove", function (ev) {
+    var box = hit.getBoundingClientRect();
+    var frac = (ev.clientX - box.left) / box.width;
+    var layer = Math.round(1 + frac * (maxLayer - 1));
+    layer = Math.max(1, Math.min(maxLayer, layer));
+    var marks = ['<line class="cursor" x1="' + sx(layer).toFixed(1) + '" y1="' + LMT + '" x2="'
+      + sx(layer).toFixed(1) + '" y2="' + (LMT + ph) + '"/>'];
+    var lines = [];
+    runs.forEach(function (r) {
+      var i = r.layers.indexOf(layer);
+      if (i < 0) return;
+      keys.forEach(function (k) {
+        var v = r.series[k][i];
+        if (v === null) return;
+        marks.push('<circle cx="' + sx(layer).toFixed(1) + '" cy="' + sy(v).toFixed(1)
+          + '" r="3" fill="' + pcolor(r.name) + '"/>');
+        lines.push([v, r.name + (keys.length > 1 ? " · " + metricName(k) : ""),
+          fmt(v), pcolor(r.name)]);
+      });
+    });
+    document.getElementById("layerCursor").innerHTML = marks.join("");
+    lines.sort(function (a, b) { return b[0] - a[0]; });
+    tipShow('<div class="t">Layer ' + layer + "</div>"
+      + tipRows(lines.map(function (l) { return [l[1], l[2], l[3]]; })), ev);
+  });
+  hit.addEventListener("mouseleave", function () {
+    var cursor = document.getElementById("layerCursor");
+    if (cursor) cursor.innerHTML = "";
+    tipHide();
+  });
+}
+
+var BH = 380, BML = 58, BMR = 20, BMT = 26, BMB = 74;
+
+function drawBestChart() {
+  var host = document.getElementById("bestPlot");
+  var runs = visibleRuns();
+  if (!runs.length) { host.innerHTML = '<div class="empty">No probe selected.</div>'; return; }
+
+  tipReset("best");
+  var groupW = Math.max(110, Math.min(200, 980 / runs.length));
+  var bw = (groupW * 0.78) / METRICS.length;
+  var width = Math.max(640, BML + BMR + groupW * runs.length);
+  var ph = BH - BMT - BMB;
+  var sy = function (v) { return BMT + ph - v * ph; };
+  var out = [svgOpen(width, BH, false)];
+
+  ticks(0, 1, 5).forEach(function (v) {
+    out.push('<line class="gl" x1="' + BML + '" y1="' + sy(v).toFixed(1) + '" x2="'
+      + (width - BMR) + '" y2="' + sy(v).toFixed(1) + '"/>');
+    out.push(txt(BML - 8, sy(v) + 3.5, "ax", fmt(v, 1), ' text-anchor="end"'));
+  });
+  out.push('<line class="chance" x1="' + BML + '" y1="' + sy(0.5) + '" x2="' + (width - BMR)
+    + '" y2="' + sy(0.5) + '"/>');
+  out.push('<line class="al" x1="' + BML + '" y1="' + (BMT + ph) + '" x2="' + (width - BMR)
+    + '" y2="' + (BMT + ph) + '"/>');
+  out.push(txt(0, 0, "axname", "Score",
+    ' transform="translate(14,' + (BMT + ph / 2) + ') rotate(-90)" text-anchor="middle"'));
+
+  runs.forEach(function (r, gi) {
+    var gx = BML + gi * groupW;
+    METRICS.forEach(function (m, mi) {
+      var key = m[0];
+      var peak = r.peaks[key];
+      var value = BEST_MODE === "peak" ? (peak && peak.value) : (r.best && r.best[key]);
+      var layer = BEST_MODE === "peak" ? (peak && peak.layer) : r.best_layer;
+      if (value === null || value === undefined) return;
+      var x = gx + groupW * 0.11 + mi * bw;
+      var y = sy(value);
+      var tip = tipSlot("best", '<div class="t">' + esc(r.name) + " · " + esc(m[1]) + "</div>"
+        + tipRows([
+          ["Model", esc(r.model)],
+          ["Layer", layer],
+          [m[1], fmt(value)],
+          ["Peak layer", peak ? peak.layer + " (" + fmt(peak.value) + ")" : null],
+          ["Persisted layer", r.best_layer + (r.best ? " (" + fmt(r.best[key]) + ")" : "")],
+          ["Pooling", esc(r.pooling)
+            + (r.pooling_tokens ? " · " + r.pooling_tokens + " tokens" : "")],
+          ["Train / test", num(r.n_train) + " / " + num(r.n_test)]
+        ]));
+      out.push('<rect x="' + (x + 1).toFixed(1) + '" y="' + y.toFixed(1) + '" width="'
+        + (bw - 2).toFixed(1) + '" height="' + (BMT + ph - y).toFixed(1) + '" fill="'
+        + MCOLOR[key] + '" data-tip="' + tip + '"/>');
+      out.push(txt(x + bw / 2, y - 14, "vlabel", fmt(value, bw >= 30 ? 3 : 2),
+        ' text-anchor="middle"'));
+      out.push(txt(x + bw / 2, y - 4, "vlabel", "L" + layer, ' text-anchor="middle"'));
+    });
+    out.push(txt(gx + groupW / 2, BMT + ph + 16, "ax", r.name, ' text-anchor="middle"'));
+    out.push(txt(gx + groupW / 2, BMT + ph + 29, "ax", r.model, ' text-anchor="middle"'));
+    out.push('<rect class="hit" x="' + gx + '" y="' + BMT + '" width="' + groupW + '" height="'
+      + (ph + 34) + '" data-probe="' + esc(r.name) + '" style="cursor:pointer"/>');
+  });
+  out.push("</svg>");
+  host.innerHTML = out.join("");
+
+  
+  host.onclick = function (ev) {
+    var name = ev.target.getAttribute && ev.target.getAttribute("data-probe");
+    if (!name) return;
+    PROBES.training.forEach(function (r) { TRAIN_OFF[r.name] = true; });
+    delete TRAIN_OFF[name];
+    drawTraining();
+    document.getElementById("layerPlot").scrollIntoView({ block: "center" });
+  };
+}
+
+function buildTrainTable() {
+  var head = ["Probe", "Model", "Layers", "Pooling", "Ctx", "Chat tmpl", "Quant",
+    "Train", "Test", "Persisted layer", "Accuracy", "F1", "AUROC"];
+  var out = ["<thead><tr>"];
+  head.forEach(function (h) { out.push("<th>" + esc(h) + "</th>"); });
+  out.push("</tr></thead><tbody>");
+  PROBES.training.forEach(function (r) {
+    var best = r.best || {};
+    out.push("<tr>"
+      + '<td><span class="sw" style="background:' + pcolor(r.name) + '"></span>' + esc(r.name)
+      + "</td>"
+      + "<td>" + esc(r.model) + "</td>"
+      + "<td>" + r.layers.length + "</td>"
+      + "<td>" + esc(r.pooling) + (r.pooling_tokens ? " · " + r.pooling_tokens : "") + "</td>"
+      + "<td>" + num(r.max_length) + "</td>"
+      + "<td>" + (r.use_chat_template ? "yes" : "no") + "</td>"
+      + "<td>" + esc(r.quantization) + "</td>"
+      + "<td>" + num(r.n_train) + "</td>"
+      + "<td>" + num(r.n_test) + "</td>"
+      + "<td>" + esc(r.best_layer) + "</td>"
+      + "<td>" + fmt(best.accuracy) + "</td>"
+      + "<td>" + fmt(best.f1) + "</td>"
+      + "<td>" + fmt(best.auroc) + "</td>"
+      + "</tr>");
+  });
+  out.push("</tbody>");
+  document.getElementById("trainTable").innerHTML = out.join("");
+}
+
+
+function initSuite(suites) {
+  var sel = document.getElementById("suiteRun");
+  sel.innerHTML = "";
+  suites.forEach(function (s, i) {
+    var o = document.createElement("option");
+    o.value = String(i);
+    o.textContent = s.name + "  ·  " + s.probes.length + " probes  ·  "
+      + s.datasets.length + " datasets";
+    sel.appendChild(o);
+    if (i === 0) o.selected = true;
+  });
+  sel.onchange = function () { selectSuite(Number(sel.value)); };
+  syncSuiteSegment();
+  tipify(document.getElementById("suitePlot"));
+  selectSuite(0);
+}
+
+function syncSuiteSegment() {
+  segment(document.getElementById("suiteMetric"), SUITE_METRIC, function (v) {
+    SUITE_METRIC = v; syncSuiteSegment(); drawSuite();
+  });
+}
+
+function selectSuite(i) {
+  SUITE = PROBES.suites[i];
+  SUITE_OFF = {};
+  var s = SUITE.settings || {};
+  document.getElementById("suiteSub").innerHTML =
+    esc(SUITE.name) + " · labels: <b>" + esc(s.label_source) + "</b>"
+    + (s.holistic_threshold ? " (holistic cut at " + esc(s.holistic_threshold) + ")" : "")
+    + " · text: " + esc(s.text_mode)
+    + " · chat template: " + (s.apply_chat_template ? "yes" : "no")
+    + " · speak-only: " + (s.speak_only ? "yes" : "no")
+    + " · control averaged over " + esc(s.baseline_seeds) + " random directions"
+    + (s.max_rows ? " · capped at " + esc(s.max_rows) + " rows/dataset" : "")
+    + ((SUITE.sources || []).length > 1
+      ? " · assembled from " + SUITE.sources.map(function (x) { return esc(x.name); }).join(" + ")
+      : "");
+  renderSuiteWarning();
+  buildLegend(
+    document.getElementById("suiteLegend"),
+    SUITE.probes.map(function (p) {
+      var diff = settingsDiff(p);
+      return {
+        key: p.name, label: p.name, color: pcolor(p.name),
+        title: (p.model || "") + " · layer " + p.layer
+          + (p.pooling_tokens ? " · last " + p.pooling_tokens + " tokens" : "")
+          + (p.source ? " · from " + p.source : "")
+          + (diff ? " · scored with " + diff : "")
+      };
+    }),
+    SUITE_OFF,
+    drawSuite
+  );
+  drawSuite();
+}
+
+var SETTING_NAMES = {
+  label_source: "labels", text_mode: "text", apply_chat_template: "chat template",
+  speak_only: "speak-only"
+};
+
+function settingsDiff(probe) {
+  var diff = probe.settings_diff || {};
+  var parts = [];
+  Object.keys(diff).forEach(function (key) {
+    var value = diff[key];
+    if (value === true) value = "yes";
+    if (value === false) value = "no";
+    parts.push((SETTING_NAMES[key] || key) + ": " + value);
+  });
+  return parts.length ? parts.join(", ") : null;
+}
+
+
+function renderSuiteWarning() {
+  var host = document.getElementById("suiteWarn");
+  var notes = [];
+  SUITE.probes.forEach(function (p) {
+    var diff = settingsDiff(p);
+    if (diff) notes.push(esc(p.name) + " was scored with " + esc(diff));
+  });
+  host.hidden = !notes.length;
+  if (!notes.length) return;
+  host.innerHTML = "Not scored identically: " + notes.join("; ")
+    + " — the rest of this view used " + esc(describeSettings(SUITE.settings))
+    + ". Compare those bars with that in mind.";
+}
+
+function describeSettings(s) {
+  return "labels: " + s.label_source + ", text: " + s.text_mode
+    + ", chat template: " + (s.apply_chat_template ? "yes" : "no")
+    + ", speak-only: " + (s.speak_only ? "yes" : "no");
+}
+
+function suiteRow(probe, dataset, variant) {
+  for (var i = 0; i < SUITE.rows.length; i++) {
+    var r = SUITE.rows[i];
+    if (r.probe === probe && r.dataset === dataset && r.variant === variant) return r;
+  }
+  return null;
+}
+
+var SMT = 34, SPANEL = 250, SGAP = 54, SML = 60, SMR = 18, SXLAB = 96;
+
+function drawSuite() {
+  var host = document.getElementById("suitePlot");
+  var probes = SUITE.probes.filter(function (p) { return !SUITE_OFF[p.name]; });
+  var datasets = SUITE.datasets;
+  if (!probes.length) { host.innerHTML = '<div class="empty">No probe selected.</div>'; return; }
+
+  
+  var bw = 22, groupPad = 26;
+  tipReset("suite");
+  var groupW = Math.max(72, probes.length * bw + groupPad);
+  var width = Math.max(880, SML + SMR + groupW * datasets.length);
+  var height = SMT + SPANEL + SGAP + SPANEL + SXLAB;
+  var label = metricName(SUITE_METRIC);
+  var out = [svgOpen(width, height, false)];
+  var panels = [
+    ["base", SMT, "Untrained control — random direction, same model and layer (" + label + ")"],
+    ["trained", SMT + SPANEL + SGAP, "Trained probe (" + label + ")"]
+  ];
+
+  panels.forEach(function (panel) {
+    var variant = panel[0], top = panel[1];
+    var sy = function (v) { return top + SPANEL - Math.max(0, Math.min(1.05, v)) / 1.05 * SPANEL; };
+    out.push(txt(SML, top - 9, "ptitle", panel[2]));
+    ticks(0, 1, 5).forEach(function (v) {
+      out.push('<line class="gl" x1="' + SML + '" y1="' + sy(v).toFixed(1) + '" x2="'
+        + (width - SMR) + '" y2="' + sy(v).toFixed(1) + '"/>');
+      out.push(txt(SML - 8, sy(v) + 3.5, "ax", fmt(v, 1), ' text-anchor="end"'));
+    });
+    out.push('<line class="chance" x1="' + SML + '" y1="' + sy(0.5) + '" x2="' + (width - SMR)
+      + '" y2="' + sy(0.5) + '"/>');
+    out.push('<line class="al" x1="' + SML + '" y1="' + sy(0) + '" x2="' + (width - SMR)
+      + '" y2="' + sy(0) + '"/>');
+    out.push(txt(0, 0, "axname", label,
+      ' transform="translate(16,' + (top + SPANEL / 2) + ') rotate(-90)" text-anchor="middle"'));
+
+    datasets.forEach(function (d, di) {
+      var gx = SML + di * groupW + (groupW - probes.length * bw) / 2;
+      probes.forEach(function (p, pi) {
+        var row = suiteRow(p.name, d.name, variant);
+        var value = row ? row[SUITE_METRIC] : null;
+        var x = gx + pi * bw;
+        if (value === null || value === undefined) {
+          out.push(txt(x + bw / 2, sy(0) - 4, "vlabel", "n/a", ' text-anchor="middle"'));
+          return;
+        }
+        var pair = suiteRow(p.name, d.name, variant === "base" ? "trained" : "base");
+        var lift = (pair && pair[SUITE_METRIC] !== null && pair[SUITE_METRIC] !== undefined)
+          ? (variant === "trained" ? value - pair[SUITE_METRIC] : pair[SUITE_METRIC] - value)
+          : null;
+        var tip = tipSlot("suite", '<div class="t">' + esc(p.name) + " · "
+          + (variant === "base" ? "untrained control" : "trained probe") + "</div>"
+          + tipRows([
+            ["Dataset", esc(d.name)],
+            ["Labels", esc(row.label_source) + " · " + esc(row.dataset_kind)],
+            [label + " (charted)", fmt(value)],
+            ["Lift over control", lift === null ? null : (lift >= 0 ? "+" : "") + fmt(lift)],
+            ["Spread (sd)", row[SUITE_METRIC + "_std"] === null
+              || row[SUITE_METRIC + "_std"] === undefined
+              ? null : "±" + fmt(row[SUITE_METRIC + "_std"]) + " over " + row.seeds + " seeds"],
+            
+            SUITE_METRIC === "auroc" ? null : ["AUROC", fmt(row.auroc)],
+            SUITE_METRIC === "accuracy" ? null
+              : ["Accuracy", fmt(row.accuracy) + " (majority " + fmt(row.baseline_accuracy) + ")"],
+            SUITE_METRIC === "accuracy" ? ["Majority", fmt(row.baseline_accuracy)] : null,
+            ["F1 / precision / recall",
+              fmt(row.f1, 2) + " / " + fmt(row.precision, 2) + " / " + fmt(row.recall, 2)],
+            ["Rows", num(row.n) + " · " + num(row.n_positive) + " deceptive ("
+              + fmt(row.positive_rate, 2) + ")"],
+            ["Layer", row.layer]
+          ]));
+        out.push('<rect x="' + (x + 1).toFixed(1) + '" y="' + sy(value).toFixed(1) + '" width="'
+          + (bw - 2) + '" height="' + (sy(0) - sy(value)).toFixed(1) + '" fill="'
+          + pcolor(p.name) + '" data-tip="' + tip + '"/>');
+        var std = row[SUITE_METRIC + "_std"];
+        if (std !== null && std !== undefined && std > 0) {
+          var cx = x + bw / 2;
+          var hi = sy(Math.min(1.05, value + std)), lo = sy(Math.max(0, value - std));
+          out.push('<line class="errbar" x1="' + cx + '" y1="' + hi.toFixed(1) + '" x2="' + cx
+            + '" y2="' + lo.toFixed(1) + '"/>');
+          out.push('<line class="errbar" x1="' + (cx - 3) + '" y1="' + hi.toFixed(1) + '" x2="'
+            + (cx + 3) + '" y2="' + hi.toFixed(1) + '"/>');
+          out.push('<line class="errbar" x1="' + (cx - 3) + '" y1="' + lo.toFixed(1) + '" x2="'
+            + (cx + 3) + '" y2="' + lo.toFixed(1) + '"/>');
+        }
+        
+        out.push(txt(x + bw / 2, sy(value) - 4, "vlabel", fmt(value, 2),
+          ' text-anchor="middle"'));
+      });
+    });
+  });
+
+  var baseY = SMT + SPANEL + SGAP + SPANEL;
+  datasets.forEach(function (d, di) {
+    var cx = SML + di * groupW + groupW / 2;
+    var rotate = datasets.length > 4;
+    var anchor = rotate ? "end" : "middle";
+    var transform = rotate ? ' transform="rotate(-28,' + cx + ',' + (baseY + 16) + ')"' : "";
+    out.push(txt(cx, baseY + 16, "ax", d.label, ' text-anchor="' + anchor + '"' + transform));
+    out.push(txt(cx, baseY + 28, "ax", "n=" + num(d.n),
+      ' text-anchor="' + anchor + '"'
+      + (rotate ? ' transform="rotate(-28,' + cx + ',' + (baseY + 28) + ')"' : "")));
+  });
+  out.push("</svg>");
+  host.innerHTML = out.join("");
+
+  buildLiftTable(probes, datasets);
+  buildSuiteTable();
+}
+
+function buildLiftTable(probes, datasets) {
+  var label = metricName(SUITE_METRIC);
+  var out = ['<thead><tr><th>Probe</th>'];
+  datasets.forEach(function (d) {
+    out.push('<th title="' + esc(d.name) + '">' + esc(d.label) + "</th>");
+  });
+  out.push("<th>Mean</th></tr></thead><tbody>");
+  probes.forEach(function (p) {
+    out.push('<tr><td><span class="sw" style="background:' + pcolor(p.name) + '"></span>'
+      + esc(p.name) + "</td>");
+    var sum = 0, count = 0;
+    datasets.forEach(function (d) {
+      var trained = suiteRow(p.name, d.name, "trained");
+      var base = suiteRow(p.name, d.name, "base");
+      var a = trained ? trained[SUITE_METRIC] : null, b = base ? base[SUITE_METRIC] : null;
+      if (a === null || a === undefined || b === null || b === undefined) {
+        out.push("<td>—</td>");
+        return;
+      }
+      var lift = a - b;
+      sum += lift; count += 1;
+      out.push('<td class="' + (lift >= 0 ? "up" : "down") + '">'
+        + (lift >= 0 ? "+" : "") + fmt(lift, 3) + "</td>");
+    });
+    out.push('<td class="' + (sum >= 0 ? "up" : "down") + '">'
+      + (count ? (sum / count >= 0 ? "+" : "") + fmt(sum / count, 3) : "—") + "</td></tr>");
+  });
+  out.push("</tbody>");
+  document.getElementById("liftTable").innerHTML = out.join("");
+  document.getElementById("liftSub").textContent =
+    "Trained " + label + " minus the untrained control on the same rows — the number the "
+    + "pairing exists to produce. Only the probes shown above are listed.";
+}
+
+function buildSuiteTable() {
+  var head = ["Probe", "Variant", "Dataset", "Labels", "n", "Deceptive", "AUROC", "Accuracy",
+    "Majority", "F1", "Precision", "Recall", "Layer", "Seeds"];
+  var out = ["<thead><tr>"];
+  head.forEach(function (h) { out.push("<th>" + esc(h) + "</th>"); });
+  out.push("</tr></thead><tbody>");
+  SUITE.rows.forEach(function (r) {
+    if (SUITE_OFF[r.probe]) return;
+    out.push("<tr>"
+      + '<td><span class="sw" style="background:' + pcolor(r.probe) + '"></span>' + esc(r.probe)
+      + "</td>"
+      + "<td>" + (r.variant === "base" ? "control" : "trained") + "</td>"
+      + '<td title="' + esc(r.dataset) + '">' + esc(r.dataset) + "</td>"
+      + "<td>" + esc(r.label_source) + "</td>"
+      + "<td>" + num(r.n) + "</td>"
+      + "<td>" + fmt(r.positive_rate, 3) + "</td>"
+      + "<td>" + fmt(r.auroc) + (r.auroc_std ? " ±" + fmt(r.auroc_std, 2) : "") + "</td>"
+      + "<td>" + fmt(r.accuracy) + "</td>"
+      + "<td>" + fmt(r.baseline_accuracy) + "</td>"
+      + "<td>" + fmt(r.f1) + "</td>"
+      + "<td>" + fmt(r.precision) + "</td>"
+      + "<td>" + fmt(r.recall) + "</td>"
+      + "<td>" + esc(r.layer) + "</td>"
+      + "<td>" + esc(r.seeds) + "</td>"
+      + "</tr>");
+  });
+  out.push("</tbody>");
+  document.getElementById("suiteTable").innerHTML = out.join("");
+  document.getElementById("rowsSub").textContent =
+    "Every (probe, dataset, variant) the suite wrote, exactly as it sits in results.json"
+    + (SUITE.skipped && SUITE.skipped.length
+      ? " · " + SUITE.skipped.length + " combination(s) skipped by the run" : "") + ".";
+}
+
+
+var CONTRA = null, CSOURCE = "all", CSPLIT = "all", CQUERY = "";
+
+window.__AMONGUS_CONTRASTIVE__ = function (payload) { CONTRA = payload; initContrastive(); };
+
+function initContrastive() {
+  document.getElementById("tab-contrastive").hidden = !CONTRA;
+  if (!CONTRA) return;
+  var splits = CONTRA.splits.map(function (s) { return s.name + " " + num(s.total); });
+  document.getElementById("contraSub").textContent =
+    num(CONTRA.total) + " examples · " + num(CONTRA.pairs_total) + " contrast pairs · "
+    + splits.join(" / ") + " · " + CONTRA.path;
+  document.getElementById("pairsSub").textContent =
+    CONTRA.pairs_shown < CONTRA.pairs_total
+      ? num(CONTRA.pairs_shown) + " of " + num(CONTRA.pairs_total) + " pairs, taken by even"
+        + " stride so every source keeps its share of the sample."
+      : "Every one of the " + num(CONTRA.pairs_total) + " pairs.";
+  writeSplitNote();
+  buildPersonaList();
+  buildContraTable();
+  buildContraControls();
+  tipify(document.getElementById("compPlot"));
+  drawComposition();
+  renderPairs();
+}
+
+
+function writeSplitNote() {
+  var host = document.getElementById("splitNote");
+  var cross = CONTRA.cross_split_pairs, complete = CONTRA.complete_pairs;
+  if (!cross || !complete) { host.hidden = true; return; }
+  host.hidden = false;
+  host.textContent = "The train/test cut is per row, not per pair: " + num(cross) + " of "
+    + num(complete) + " pairs (" + Math.round(100 * cross / complete) + "%) have one side in "
+    + "train and the other in test, so the held-out split shares its questions with training. "
+    + "Read the per-layer scores on the probe training page with that in mind.";
+}
+
+
+function compRows() {
+  var rows = [];
+  CONTRA.sources.forEach(function (s) {
+    rows.push({ label: s.name, note: s.axis, honest: s.honest, dishonest: s.dishonest,
+                total: s.total });
+  });
+  CONTRA.splits.forEach(function (s, i) {
+    rows.push({ label: s.name, note: "split", honest: s.honest, dishonest: s.dishonest,
+                total: s.total, rule: i === 0 });
+  });
+  return rows;
+}
+
+function drawComposition() {
+  var rows = compRows(), W = 760, GL = 82, GR = 132, BH = 15, GAP = 13, TOP = 9;
+  var span = W - GL - GR, max = 1;
+  rows.forEach(function (r) { if (r.total > max) max = r.total; });
+  tipReset("comp");
+  var out = [svgOpen(W, TOP + rows.length * (BH + GAP), true)];
+  rows.forEach(function (r, i) {
+    var y = TOP + i * (BH + GAP), base = y + BH - 3;
+    if (r.rule) {
+      var ry = y - GAP / 2;
+      out.push('<line class="al" x1="0" y1="' + ry + '" x2="' + W + '" y2="' + ry + '"/>');
+    }
+    out.push(txt(GL - 9, base, "ax", r.label, ' text-anchor="end"'));
+    var hw = span * r.honest / max, dw = span * r.dishonest / max;
+    out.push(cbar(GL, y, hw, BH, "var(--truth)", r, "honest", r.honest));
+    out.push(cbar(GL + hw, y, dw, BH, "var(--lie)", r, "dishonest", r.dishonest));
+    out.push(txt(GL + hw + dw + 8, base, "ax", num(r.total) + "  " + r.note));
+  });
+  out.push("</svg>");
+  document.getElementById("compPlot").innerHTML = out.join("");
+}
+
+function cbar(x, y, w, h, fill, row, kind, n) {
+  var tip = '<div class="t">' + esc(row.label + " · " + kind) + "</div>"
+    + tipRows([["examples", num(n), fill],
+               ["share of " + row.label, fmt(row.total ? n / row.total : 0, 3)],
+               ["of all examples", fmt(n / CONTRA.total, 3)]]);
+  return '<rect x="' + x + '" y="' + y + '" width="' + Math.max(0, w) + '" height="' + h
+    + '" fill="' + fill + '" data-tip="' + tipSlot("comp", tip) + '"/>';
+}
+
+function buildContraTable() {
+  var out = ["<thead><tr><th>Source</th><th>Axis</th><th>Examples</th><th>Honest</th>"
+    + "<th>Dishonest</th><th>Pairs</th><th>Categories</th></tr></thead><tbody>"];
+  CONTRA.sources.forEach(function (s) {
+    out.push("<tr><td>" + esc(s.name) + "</td><td>" + esc(s.axis) + "</td><td>"
+      + num(s.total) + '</td><td class="up">' + num(s.honest) + '</td><td class="down">'
+      + num(s.dishonest) + "</td><td>" + num(s.pairs) + "</td><td>"
+      + (s.categories ? num(s.categories) : "—") + "</td></tr>");
+  });
+  var label = CONTRA.stats.by_label || {};
+  out.push("<tr><td>all</td><td>—</td><td>" + num(CONTRA.total) + '</td><td class="up">'
+    + num(label.honest || 0) + '</td><td class="down">' + num(label.dishonest || 0)
+    + "</td><td>" + num(CONTRA.pairs_total) + "</td><td>—</td></tr></tbody>");
+  document.getElementById("contraTable").innerHTML = out.join("");
+}
+
+
+
+function buildPersonaList() {
+  var out = [];
+  CONTRA.personas.forEach(function (p, i) {
+    if (!i) return;
+    out.push('<div class="prow"><span class="badge">P' + i + '</span><span class="ptext">'
+      + esc(p.text) + '</span><span class="pn">' + num(p.n) + " rows · "
+      + esc(p.sides.join(" + ") || "—") + "</span></div>");
+  });
+  var none = CONTRA.personas[0];
+  if (none && none.n) {
+    out.push('<div class="prow"><span class="badge b-unres">none</span><span class="ptext">'
+      + "No system prompt: the answer is simply correct or incorrect (TQA)."
+      + '</span><span class="pn">' + num(none.n) + " rows</span></div>");
+  }
+  document.getElementById("personaList").innerHTML = out.join("");
+}
+
+
+function buildContraControls() {
+  var sources = ["all"], splits = ["all"];
+  CONTRA.sources.forEach(function (s) { sources.push(s.name); });
+  CONTRA.splits.forEach(function (s) { splits.push(s.name); });
+  segButtons(document.getElementById("contraSource"), sources);
+  segButtons(document.getElementById("contraSplit"), splits);
+  syncContraSegments();
+  var box = document.getElementById("contraSearch");
+  box.oninput = function () { CQUERY = box.value.toLowerCase(); renderPairs(); };
+}
+
+function segButtons(host, values) {
+  host.innerHTML = values.map(function (v) {
+    return '<button type="button" data-value="' + esc(v) + '">'
+      + esc(v === "all" ? "All" : v) + "</button>";
+  }).join("");
+}
+
+function syncContraSegments() {
+  segment(document.getElementById("contraSource"), CSOURCE, function (v) {
+    CSOURCE = v; syncContraSegments(); renderPairs();
+  });
+  segment(document.getElementById("contraSplit"), CSPLIT, function (v) {
+    CSPLIT = v; syncContraSegments(); renderPairs();
+  });
+}
+
+function crossSplit(p) {
+  return !!(p.honest && p.dishonest && p.honest.split !== p.dishonest.split);
+}
+
+function contraMatch(p) {
+  if (CSOURCE !== "all" && p.source !== CSOURCE) return false;
+  if (CSPLIT !== "all"
+      && !((p.honest && p.honest.split === CSPLIT)
+        || (p.dishonest && p.dishonest.split === CSPLIT))) return false;
+  if (!CQUERY) return true;
+  var hay = ((p.question || "") + " " + (p.category || "")
+    + " " + (p.honest ? p.honest.answer : "")
+    + " " + (p.dishonest ? p.dishonest.answer : "")).toLowerCase();
+  return hay.indexOf(CQUERY) >= 0;
+}
+
+function contraSideHtml(side, kind) {
+  if (!side) {
+    return '<div class="cside ' + kind + '"><div class="chead"><span class="tag">' + kind
+      + '</span></div><div class="ans norec">no ' + kind + " side in this dataset</div></div>";
+  }
+  var persona = CONTRA.personas[side.persona];
+  var badge = side.persona
+    ? '<span class="badge" title="' + esc(persona ? persona.text : "") + '">P' + side.persona
+      + "</span>"
+    : '<span class="badge b-unres" title="No system prompt">no persona</span>';
+  return '<div class="cside ' + kind + '"><div class="chead"><span class="tag">' + kind
+    + "</span>" + badge + '<span class="sp">' + esc(side.split || "") + "</span></div>"
+    + '<div class="ans">' + esc(side.answer) + "</div></div>";
+}
+
+
+function personaOnly(p) {
+  return !!(p.honest && p.dishonest && p.honest.answer === p.dishonest.answer);
+}
+
+function contraPairHtml(p) {
+  var meta = '<span class="badge">' + esc(p.source) + '</span><span class="badge">'
+    + esc(p.axis) + "</span>"
+    + (p.category ? '<span class="badge">' + esc(p.category) + "</span>" : "")
+    + (personaOnly(p)
+      ? '<span class="badge b-unres" title="Both sides state the same thing; only the'
+        + ' persona differs">persona only</span>'
+      : "")
+    + (crossSplit(p)
+      ? '<span class="badge b-cross" title="This pair straddles the train/test cut">'
+        + "train / test</span>"
+      : "");
+  return '<div class="cpair"><div class="meta">' + meta + '<span class="key">' + esc(p.key)
+    + "</span></div>"
+    + (p.question ? '<div class="q"><b>Prompt</b>' + esc(p.question) + "</div>" : "")
+    + '<div class="csides">' + contraSideHtml(p.honest, "honest")
+    + contraSideHtml(p.dishonest, "dishonest") + "</div></div>";
+}
+
+function renderPairs() {
+  var shown = CONTRA.pairs.filter(contraMatch);
+  document.getElementById("contraCount").textContent =
+    num(shown.length) + " pair" + (shown.length === 1 ? "" : "s") + " shown";
+  document.getElementById("pairList").innerHTML = shown.length
+    ? shown.map(contraPairHtml).join("")
+    : '<div class="empty">No pairs match the current filter.</div>';
+}
+
+
+function setView(name) {
+  VIEW = name;
+  ["review", "contrastive", "training", "suite"].forEach(function (v) {
+    document.getElementById("view-" + v).hidden = v !== name;
+    document.getElementById("tab-" + v).setAttribute("aria-selected", String(v === name));
+  });
+  var review = name === "review";
+  document.getElementById("outcome").hidden = !review;
+  document.getElementById("pickDataset").hidden = !review;
+  document.getElementById("pickGame").hidden = !review;
+  tipHide();
+  
+  if (name === "suite" && SUITE) drawSuite();
+  if (name === "training" && PROBES && PROBES.training.length) drawTraining();
+}
+
+
 function setTheme(name) {
   document.documentElement.setAttribute("data-theme", name);
   try { window.localStorage.setItem("amongus-theme", name); } catch (err) {  }
@@ -1268,12 +2492,20 @@ document.getElementById("play").onclick = togglePlay;
 document.getElementById("nextLie").onclick = nextLie;
 document.addEventListener("keydown", function (e) {
   if (e.target.tagName === "SELECT") return;
+  
+  if (VIEW !== "review") return;
   if (e.key === "ArrowLeft") setTurn(cur - 1);
   else if (e.key === "ArrowRight") setTurn(cur + 1);
   else if (e.key === " ") { e.preventDefault(); togglePlay(); }
 });
+document.getElementById("tab-review").onclick = function () { setView("review"); };
+document.getElementById("tab-contrastive").onclick = function () { setView("contrastive"); };
+document.getElementById("tab-training").onclick = function () { setView("training"); };
+document.getElementById("tab-suite").onclick = function () { setView("suite"); };
 
 load("data/index.js");
+load("data/probes.js");
+load("data/contrastive.js");
 </script>
 </body>
 </html>

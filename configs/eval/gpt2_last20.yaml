@@ -1,0 +1,57 @@
+
+
+
+
+
+
+
+
+
+
+
+probes:
+
+
+  discover: []
+  paths:
+    - data/probes/gpt2-last20/probe.joblib
+
+datasets:
+  roots: [expt-logs]
+  include: []
+  exclude: []
+  max_rows: null
+  speak_only: false
+
+
+
+
+
+output_dir: data/probes/eval_suite_gpt2_last20
+
+
+
+
+label_source: auto
+holistic_threshold: 7
+
+text_mode: response
+
+
+
+
+apply_chat_template: false
+
+device: auto
+batch_size: 32
+
+baseline:
+  seeds: 5
+  seed: 0
+
+chart:
+  enabled: true
+  metric: auroc
+  dpi: 150
+
+reuse: true

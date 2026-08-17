@@ -306,6 +306,7 @@ def extract_token_activations(
         msg = f"Unknown pooling {pooling!r}; expected 'last', 'mean' or 'last_n'."
         raise ValueError(msg)
 
+    max_length = _fit_to_context(model, max_length)
     per_example = max(1, pooling_tokens) if pooling == "last_n" else 1
     want_offsets = pooling == "last_n"
     special_ids = _special_token_ids(tokenizer) if want_offsets else set()
@@ -513,6 +514,36 @@ def _text_config(config: Any) -> Any:
     return None
 
 
+                                                                              
+                                                                            
+_UNBOUNDED_POSITIONS = 1_000_000_000
+
+
+def context_limit(model: Any) -> int | None:
+    pass
+    config = _text_config(model.config) or model.config
+    for attr in ("max_position_embeddings", "n_positions", "n_ctx"):
+        value = getattr(config, attr, None)
+        if isinstance(value, int) and 0 < value < _UNBOUNDED_POSITIONS:
+            return int(value)
+    return None
+
+
+def _fit_to_context(model: Any, max_length: int) -> int:
+    pass
+    limit = context_limit(model)
+    if limit is None or max_length <= limit:
+        return max_length
+    logger.warning(
+        "max_length={} exceeds {}'s {}-position context; truncating at {} instead.",
+        max_length,
+        model.config.model_type if hasattr(model.config, "model_type") else type(model).__name__,
+        limit,
+        limit,
+    )
+    return limit
+
+
 def default_layers(model: Any) -> list[int]:
     pass
     text_config = _text_config(model.config)
@@ -532,6 +563,7 @@ __all__ = [
     "build_prompt",
     "build_prompt_with_span",
     "content_span",
+    "context_limit",
     "default_layers",
     "describe_selected_tokens",
     "extract_activations",

@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -9,14 +7,14 @@ from typing import TYPE_CHECKING, Any
 
 from ..logging import get_logger
 
-if TYPE_CHECKING:                                  
+if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from ..probes.eval import EvalReport
 
 logger = get_logger()
 
-                                                          
+
 _METRICS: list[tuple[str, str]] = [
     ("auroc", "AUROC"),
     ("accuracy", "Accuracy"),
@@ -25,37 +23,31 @@ _METRICS: list[tuple[str, str]] = [
     ("recall", "Recall"),
 ]
 
-                                                                    
+
 _PALETTE = ["#4f8cff", "#ff6b6b", "#34d399", "#ffb347", "#b57bff", "#22d3ee", "#f472b6"]
 
-                                                                             
-                                                                           
-                                                                              
-                                                                             
-                                                                               
-                                                  
+
 _SUITE_PALETTE = [
-    "#2a78d6",        
-    "#eb6834",          
-    "#1baf7a",        
-    "#eda100",          
-    "#e87ba4",           
-    "#008300",         
-    "#4a3aa7",          
-    "#e34948",       
+    "#2a78d6",
+    "#eb6834",
+    "#1baf7a",
+    "#eda100",
+    "#e87ba4",
+    "#008300",
+    "#4a3aa7",
+    "#e34948",
 ]
 _SUITE_SURFACE = "#fcfcfb"
 _SUITE_INK = "#1a1a19"
 _SUITE_INK_SOFT = "#5c5c58"
 _SUITE_GRID = "#e3e3e0"
 
-                                  
+
 _W, _H = 920, 480
 _ML, _MR, _MT, _MB = 64, 24, 40, 140
 
 
 def _escape(text: str) -> str:
-    pass
     return (
         str(text)
         .replace("&", "&amp;")
@@ -66,15 +58,13 @@ def _escape(text: str) -> str:
 
 
 def _metric_value(report: EvalReport, key: str) -> float | None:
-    pass
     return getattr(report, key)
 
 
 def _bars_svg(reports: Sequence[EvalReport], labels: Sequence[str]) -> str:
-    pass
     plot_w = _W - _ML - _MR
     plot_h = _H - _MT - _MB
-    base_y = _MT + plot_h                        
+    base_y = _MT + plot_h
     n_models = max(len(reports), 1)
 
     def y_of(value: float) -> float:
@@ -82,7 +72,6 @@ def _bars_svg(reports: Sequence[EvalReport], labels: Sequence[str]) -> str:
 
     parts: list[str] = []
 
-                                                                
     for tick in (0.0, 0.25, 0.5, 0.75, 1.0):
         y = y_of(tick)
         parts.append(
@@ -94,7 +83,6 @@ def _bars_svg(reports: Sequence[EvalReport], labels: Sequence[str]) -> str:
             f'font-size="10" fill="#8b93bd">{tick:.2f}</text>'
         )
 
-                                                                                
     y_ref = y_of(0.5)
     parts.append(
         f'<line x1="{_ML}" y1="{y_ref:.1f}" x2="{_ML + plot_w}" y2="{y_ref:.1f}" '
@@ -105,7 +93,6 @@ def _bars_svg(reports: Sequence[EvalReport], labels: Sequence[str]) -> str:
         f'font-size="10" fill="#ff8a8a">0.5 chance</text>'
     )
 
-                                                              
     group_w = plot_w / len(_METRICS)
     inner = group_w * 0.82
     bar_w = inner / n_models
@@ -116,7 +103,6 @@ def _bars_svg(reports: Sequence[EvalReport], labels: Sequence[str]) -> str:
             colour = _PALETTE[i % len(_PALETTE)]
             x = gx + i * bar_w
             if value is None:
-                                                                                
                 parts.append(
                     f'<text x="{x + bar_w / 2:.1f}" y="{base_y - 4:.1f}" '
                     f'text-anchor="middle" font-size="9" fill="#7b83ad">n/a</text>'
@@ -134,26 +120,24 @@ def _bars_svg(reports: Sequence[EvalReport], labels: Sequence[str]) -> str:
                     f'<text x="{x + bar_w / 2:.1f}" y="{y - 3:.1f}" '
                     f'text-anchor="middle" font-size="9" fill="#c8cdea">{value:.2f}</text>'
                 )
-                                      
+
         parts.append(
             f'<text x="{gx + inner / 2:.1f}" y="{base_y + 18:.1f}" text-anchor="middle" '
             f'font-size="12" fill="#d7dcf5">{title}</text>'
         )
 
-                                  
     legend_y = base_y + 44
     lx = _ML
     for i, label in enumerate(labels):
         colour = _PALETTE[i % len(_PALETTE)]
         parts.append(
-            f'<rect x="{lx}" y="{legend_y - 10}" width="12" height="12" '
-            f'fill="{colour}" rx="2"/>'
+            f'<rect x="{lx}" y="{legend_y - 10}" width="12" height="12" fill="{colour}" rx="2"/>'
         )
         parts.append(
             f'<text x="{lx + 18}" y="{legend_y}" font-size="12" fill="#e6e8f0">'
             f"{_escape(label)}</text>"
         )
-        lx += 26 + len(label) * 7                                         
+        lx += 26 + len(label) * 7
 
     return (
         f'<svg viewBox="0 0 {_W} {_H}" width="100%" '
@@ -163,7 +147,6 @@ def _bars_svg(reports: Sequence[EvalReport], labels: Sequence[str]) -> str:
 
 
 def _table_html(reports: Sequence[EvalReport], labels: Sequence[str]) -> str:
-    pass
     head = (
         "<tr><th>Model</th><th>Layer</th><th>n</th><th>Impostor rate</th>"
         "<th>AUROC</th><th>Accuracy</th><th>Majority</th>"
@@ -193,8 +176,6 @@ def _table_html(reports: Sequence[EvalReport], labels: Sequence[str]) -> str:
 
 @dataclass
 class _Meta:
-    pass
-
     dataset_dir: str
     split: str
     text_mode: str
@@ -202,7 +183,6 @@ class _Meta:
 
 
 def _subtitle(reports: Sequence[EvalReport], meta: _Meta) -> str:
-    pass
     return (
         f"{meta.dataset_dir} — split={meta.split}, text_mode={meta.text_mode}, "
         f"speak_only={str(meta.speak_only).lower()} — {len(reports)} model(s)"
@@ -217,13 +197,12 @@ def render_comparison_png(
     *,
     dpi: int = 150,
 ) -> Path:
-    pass
     try:
         import matplotlib
 
-        matplotlib.use("Agg")                                               
+        matplotlib.use("Agg")
         import matplotlib.pyplot as plt
-    except ImportError as exc:                                                    
+    except ImportError as exc:
         msg = "matplotlib is required for --format png (install the 'ml' extra)."
         raise ImportError(msg) from exc
 
@@ -245,8 +224,7 @@ def render_comparison_png(
         raw = [_metric_value(report, key) for key, _ in _METRICS]
         values = [v or 0.0 for v in raw]
         bars = ax.bar(xs, values, bar_w, label=labels[i], color=colour)
-                                                                                
-                                                            
+
         ax.bar_label(
             bars,
             labels=["" if v is None else f"{v:.2f}" for v in raw],
@@ -255,13 +233,18 @@ def render_comparison_png(
             color="#444",
         )
         for x, v in zip(xs, raw, strict=True):
-            if v is None:                                           
+            if v is None:
                 ax.text(x, 0.01, "n/a", ha="center", va="bottom", fontsize=7, color="#888")
 
     ax.axhline(0.5, ls="--", lw=1, color="#d9534f", alpha=0.7)
     ax.text(
-        len(_METRICS) - 0.5, 0.505, "0.5 chance", ha="right", va="bottom",
-        fontsize=8, color="#d9534f",
+        len(_METRICS) - 0.5,
+        0.505,
+        "0.5 chance",
+        ha="right",
+        va="bottom",
+        fontsize=8,
+        color="#d9534f",
     )
     ax.set_xticks(list(positions))
     ax.set_xticklabels([title for _, title in _METRICS])
@@ -286,7 +269,6 @@ def render_comparison_html(
     labels: Sequence[str],
     meta: dict[str, Any],
 ) -> str:
-    pass
     m = _Meta(
         dataset_dir=str(meta.get("dataset_dir", "")),
         split=str(meta.get("split", "all")),
@@ -364,13 +346,12 @@ def render_suite_png(
     metric: str = "auroc",
     dpi: int = 150,
 ) -> Path:
-    pass
     try:
         import matplotlib
 
-        matplotlib.use("Agg")                                               
+        matplotlib.use("Agg")
         import matplotlib.pyplot as plt
-    except ImportError as exc:                                                    
+    except ImportError as exc:
         msg = "matplotlib is required for the suite chart (install the 'ml' extra)."
         raise ImportError(msg) from exc
 
@@ -380,8 +361,6 @@ def render_suite_png(
         msg = "No rows to plot."
         raise ValueError(msg)
     if len(probes) > len(_SUITE_PALETTE):
-                                                                            
-                                                                           
         dropped = probes[len(_SUITE_PALETTE) :]
         probes = probes[: len(_SUITE_PALETTE)]
         logger.warning(
@@ -392,8 +371,7 @@ def render_suite_png(
         )
 
     by_key = {(str(r["probe"]), str(r["dataset"]), str(r["variant"])): r for r in rows}
-                                                                              
-                                                            
+
     width = min(26.0, max(9.0, 0.55 * len(datasets) * len(probes) + 2.5))
     fig, axes = plt.subplots(
         2, 1, figsize=(width, 8.0), sharex=True, sharey=True, facecolor=_SUITE_SURFACE
@@ -420,7 +398,7 @@ def render_suite_png(
             bars = ax.bar(
                 xs,
                 values,
-                bar_w * 0.86,                                           
+                bar_w * 0.86,
                 label=probe if variant == "base" else None,
                 color=_SUITE_PALETTE[i],
                 yerr=errors if any(errors) else None,
@@ -445,12 +423,8 @@ def render_suite_png(
             ax.spines[spine].set_color(_SUITE_GRID)
         ax.tick_params(colors=_SUITE_INK_SOFT, labelsize=8)
 
-                                                                              
-                                                                           
-    counts = {
-        str(r["dataset"]): int(r["n"]) for r in rows if str(r["variant"]) == "trained"
-    }
-                                                                         
+    counts = {str(r["dataset"]): int(r["n"]) for r in rows if str(r["variant"]) == "trained"}
+
     rotated = len(datasets) > 4
     axes[1].set_xticks(range(len(datasets)))
     axes[1].set_xticklabels(
@@ -463,7 +437,6 @@ def render_suite_png(
     )
     title = "Deception probes on the gameplay logs — control above, trained below"
     if len(probes) == 1:
-                                                             
         title = f"{probes[0]} on the gameplay logs — control above, trained below"
     else:
         fig.legend(
@@ -494,7 +467,6 @@ def render_suite_png(
 
 
 def _ordered(names: set[str], rows: Sequence[dict[str, Any]], key: str) -> list[str]:
-    pass
     seen: list[str] = []
     for row in rows:
         value = str(row[key])

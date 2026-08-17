@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 from collections.abc import Iterable
@@ -23,7 +21,6 @@ def build_repeng(
     honest_system: str,
     untruthful_system: str,
 ) -> list[ContrastiveExample]:
-    pass
     examples: list[ContrastiveExample] = []
     for i, raw in enumerate(statements):
         statement = raw.strip()
@@ -63,10 +60,9 @@ def load_statements_csv(
     *,
     true_only: bool = True,
 ) -> list[str]:
-    pass
     try:
         import pandas as pd
-    except ImportError as exc:                                             
+    except ImportError as exc:
         msg = "pandas is required to read RepEng statement CSVs."
         raise ImportError(msg) from exc
 

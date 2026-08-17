@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import json
@@ -212,7 +210,6 @@ def build_html(
     roster: list[PlayerInfo],
     winner: str | None = None,
 ) -> str:
-    pass
     data = {
         "game": game_index,
         "winner": winner,
@@ -239,13 +236,11 @@ def build_html(
 
 
 def _player_number(name: str) -> str:
-    pass
     match = re.search(r"Player\s+(\d+)", name)
     return match.group(1) if match else "?"
 
 
 def _escape(text: str) -> str:
-    pass
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 

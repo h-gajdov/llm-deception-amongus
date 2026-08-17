@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -7,10 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 HOLISTIC_SCHEMA_VERSION = "gpt4omini-holistic-annotation-1.0"
 HOLISTIC_PROMPT_VERSION = "gpt4omini-holistic-prompt-1.0"
 
-                                                                          
-                                                                            
-                                                                           
-                                            
+
 HOLISTIC_MAX_OUTPUT_TOKENS = 300
 
 SCORE_VALUES: tuple[int, ...] = tuple(range(1, 11))
@@ -53,8 +48,6 @@ HOLISTIC_RESPONSE_FORMAT: dict[str, object] = {
 
 
 class HolisticRatingResult(BaseModel):
-    pass
-
     model_config = ConfigDict(extra="forbid")
 
     awareness: int = Field(ge=1, le=10)

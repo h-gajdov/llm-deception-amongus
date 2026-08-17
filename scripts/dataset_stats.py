@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import json
@@ -11,7 +9,6 @@ DEFAULT = Path("expt-logs/qwen3_8b_selfplay_50_games/summary.json")
 
 
 def main() -> None:
-    pass
     path = Path(sys.argv[1]) if len(sys.argv) > 1 else DEFAULT
     if not path.exists():
         sys.exit(f"No such file: {path}")

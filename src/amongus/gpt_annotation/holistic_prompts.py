@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import json
@@ -70,7 +68,6 @@ any commentary outside the JSON structure.
 
 
 def build_holistic_user_message(row: dict[str, object]) -> str:
-    pass
     return json.dumps(row, ensure_ascii=False, separators=(",", ":"))
 
 

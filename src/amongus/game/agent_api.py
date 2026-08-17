@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -13,8 +11,6 @@ from .view import PlayerView
 
 @dataclass
 class DecisionContext:
-    pass
-
     state: GameState
     player: PlayerState
     actions: list[Action]
@@ -25,8 +21,6 @@ class DecisionContext:
 
 @dataclass
 class Decision:
-    pass
-
     action: Action
     system_prompt: str
     prompt_sections: dict[str, str]
@@ -47,24 +41,17 @@ class Decision:
 
 
 class Agent(Protocol):
-    pass
-
     model_name: str
     pass
 
-    def act(self, ctx: DecisionContext) -> Decision:
-        pass
-        ...
+    def act(self, ctx: DecisionContext) -> Decision: ...
 
 
 @dataclass
 class ScriptedAgent:
-    pass
-
     model_name: str = "scripted"
 
     def act(self, ctx: DecisionContext) -> Decision:
-        pass
         from .enums import ActionType
 
         action = ctx.actions[0]

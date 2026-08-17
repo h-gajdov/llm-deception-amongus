@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import random
@@ -18,7 +16,6 @@ from .schema import (
 
 
 def _correct_answer(row: dict[str, Any]) -> str:
-    pass
     best = (row.get("best_answer") or "").strip()
     if best:
         return best
@@ -27,7 +24,6 @@ def _correct_answer(row: dict[str, Any]) -> str:
 
 
 def _sample_incorrect(row: dict[str, Any], k: int, rng: random.Random) -> list[str]:
-    pass
     incorrect = [a.strip() for a in (row.get("incorrect_answers") or []) if a.strip()]
     if not incorrect:
         return []
@@ -43,7 +39,6 @@ def build_examples(
     honest_system: str = "",
     dishonest_system: str = "",
 ) -> list[ContrastiveExample]:
-    pass
     axis = Axis.LYING if source is Source.TQA else Axis.DECEPTION
     examples: list[ContrastiveExample] = []
     for i, row in enumerate(rows):
@@ -87,7 +82,6 @@ def build_examples(
 def build_tqa(
     rows: Iterable[dict[str, Any]], rng: random.Random, max_incorrect: int = 1
 ) -> list[ContrastiveExample]:
-    pass
     return build_examples(rows, source=Source.TQA, rng=rng, max_incorrect=max_incorrect)
 
 
@@ -98,7 +92,6 @@ def build_dqa(
     dishonest_system: str,
     max_incorrect: int = 1,
 ) -> list[ContrastiveExample]:
-    pass
     return build_examples(
         rows,
         source=Source.DQA,
@@ -110,10 +103,9 @@ def build_dqa(
 
 
 def load_truthfulqa_rows(config: ContrastiveConfig) -> list[dict[str, Any]]:
-    pass
     try:
         from datasets import load_dataset
-    except ImportError as exc:                                             
+    except ImportError as exc:
         msg = "The 'datasets' library is required to load TruthfulQA."
         raise ImportError(msg) from exc
 
@@ -121,7 +113,7 @@ def load_truthfulqa_rows(config: ContrastiveConfig) -> list[dict[str, Any]]:
         dataset = load_dataset(
             config.truthfulqa_name, config.truthfulqa_config, split=config.truthfulqa_split
         )
-    except Exception as exc:                                       
+    except Exception as exc:
         msg = (
             f"Failed to load TruthfulQA ('{config.truthfulqa_name}', "
             f"'{config.truthfulqa_config}', split='{config.truthfulqa_split}'). "

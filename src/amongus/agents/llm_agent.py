@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 from ..config import AgentConfig
@@ -14,9 +12,7 @@ from .prompts import PromptBundle, build_prompt
 
 logger = get_logger()
 
-                                                                             
-                                                                               
-                                
+
 _RETRY_NOTES: dict[str, str] = {
     "empty_action_line": "the [Action] line was missing or empty.",
     "speak_not_available": (
@@ -33,21 +29,17 @@ _RETRY_NOTES: dict[str, str] = {
 }
 _DEFAULT_RETRY_NOTE = "the [Action] line did not match any available action."
 
-                                                                   
+
 _PARSE_STATUS = {"exact": "valid", "normalized": "normalized"}
 
 
 class LLMAgent:
-    pass
-
     def __init__(self, client: LLMClient, config: AgentConfig | None = None) -> None:
-        pass
         self._client = client
         self._config = config or AgentConfig()
         self.model_name = client.model
 
     def act(self, ctx: DecisionContext) -> Decision:
-        pass
         attempts: list[dict[str, str]] = []
         warnings: list[str] = []
         hint: str | None = ctx.retry_hint
@@ -85,8 +77,6 @@ class LLMAgent:
 
 
 class _Attempt:
-    pass
-
     __slots__ = ("declared", "match", "raw", "sections", "thinking")
 
     def __init__(
@@ -97,7 +87,6 @@ class _Attempt:
         thinking: str,
         declared: dict[str, object] | None,
     ) -> None:
-        pass
         self.raw = raw
         self.sections = sections
         self.match = match
@@ -106,7 +95,6 @@ class _Attempt:
 
 
 def _parse(completion: LLMResponse, ctx: DecisionContext) -> _Attempt:
-    pass
     raw = completion.combined()
     sections = parse_sections(strip_think_tags(raw))
     match = match_action(sections["Action"], ctx.actions)
@@ -116,7 +104,6 @@ def _parse(completion: LLMResponse, ctx: DecisionContext) -> _Attempt:
 
 
 def _fallback(actions: list[Action]) -> tuple[Action, str]:
-    pass
     wait = next((a for a in actions if a.type is ActionType.WAIT), None)
     if wait is not None:
         return wait, "fallback_wait"
@@ -124,7 +111,6 @@ def _fallback(actions: list[Action]) -> tuple[Action, str]:
 
 
 def _consistency_warnings(attempt: _Attempt, ctx: DecisionContext) -> list[str]:
-    pass
     warnings: list[str] = []
     if attempt.match.status == "normalized":
         warnings.append("action_matched_after_formatting_normalization")
@@ -156,7 +142,6 @@ def _build_decision(
     warnings: list[str],
     ctx: DecisionContext,
 ) -> Decision:
-    pass
     match = attempt.match
     if match.action is not None:
         action: Action = match.action
@@ -206,7 +191,6 @@ def _build_decision(
 
 
 def _response_spans(attempt: _Attempt, bundle: PromptBundle) -> dict[str, list[int]]:
-    pass
     base = bundle.response_offset()
     raw = attempt.raw
     spans: dict[str, list[int]] = {"raw_response": [base, base + len(raw)]}

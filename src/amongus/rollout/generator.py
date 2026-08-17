@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import random
@@ -17,8 +15,7 @@ logger = get_logger()
 
 
 def generate_dataset(config: GenerationConfig) -> Path:
-    pass
-    from ..data.writer import ExperimentWriter                                            
+    from ..data.writer import ExperimentWriter
 
     master_rng = random.Random(config.seed)
     builder = AgentFactoryBuilder(config.agent, master_rng)
@@ -68,9 +65,8 @@ def generate_dataset(config: GenerationConfig) -> Path:
 
 
 def _budget_spent(max_turns: int | None, turns_written: int, longest_game: int) -> bool:
-    pass
     if max_turns is None or longest_game == 0:
-        return False                                                         
+        return False
     return turns_written + longest_game > max_turns
 
 
@@ -80,7 +76,6 @@ def _play_one_game(
     builder: AgentFactoryBuilder,
     master_rng: random.Random,
 ) -> GameResult:
-    pass
     seed = master_rng.getrandbits(64)
     game = AmongUsGame(
         game_index=f"Game {game_number}",
@@ -95,7 +90,6 @@ def _play_one_game(
 
 
 def _log_outcomes(outcomes: Counter[str]) -> None:
-    pass
     total = sum(outcomes.values())
     if not total:
         return

@@ -1,12 +1,3 @@
-
-
-
-
-
-
-
-
-
 dataset_dir: data/processed/contrastive
 output_dir: data/probes/qwen_smoke
 
@@ -14,7 +5,6 @@ model:
   name: Qwen/Qwen2.5-0.5B-Instruct
   device: auto
   dtype: auto
-
 
 layers: [4, 8, 12]
 pooling: last
@@ -41,6 +31,5 @@ tracking:
     tracking_uri: file:./mlruns
     experiment: amongus-probes-smoke
     run_name: qwen-0.5b-smoke
-
 
 seed: 0

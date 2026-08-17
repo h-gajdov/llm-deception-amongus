@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import json
@@ -15,17 +13,14 @@ from .splits import SplitAssignment, build_splits, load_splits, write_splits
 
 logger = get_logger()
 
-                                                                                  
+
 DEFAULT_TEST_SIZE = 0.2
 
-                                                                               
-                                                                              
-                                                                        
+
 _BINARY_LABEL = {"truthful": 0, "deceptive": 1}
 
 
 def step_log_to_row(step: StepLog) -> dict[str, Any]:
-    pass
     prompt = step.interaction.prompt
     response = step.interaction.response
     action = response.get("Action", "")
@@ -52,7 +47,6 @@ def step_log_to_row(step: StepLog) -> dict[str, Any]:
 
 
 def iter_rows(experiment_dirs: Iterable[Path]) -> Iterator[dict[str, Any]]:
-    pass
     for directory in experiment_dirs:
         logs = directory / "agent-logs.json"
         if not logs.exists():
@@ -71,10 +65,9 @@ def build_hf_dataset(
     seed: int = 0,
     write_parquet: bool = True,
 ) -> Path:
-    pass
     try:
         from datasets import Dataset
-    except ImportError as exc:                                             
+    except ImportError as exc:
         msg = "The 'datasets' library is required to build HF datasets."
         raise ImportError(msg) from exc
 
@@ -108,11 +101,7 @@ def build_hf_dataset(
     return output_dir
 
 
-                                                                               
-                    
-                                                                               
 def turn_to_row(turn: TurnRecordModel, split: str) -> dict[str, Any]:
-    pass
     sections = turn.model_input.sections or {}
     status = turn.deception_status()
     speech = turn.model_output.speech or ""
@@ -126,13 +115,11 @@ def turn_to_row(turn: TurnRecordModel, split: str) -> dict[str, Any]:
         "timestep": turn.timestep,
         "phase": turn.phase,
         "split": split,
-                                                                             
         "player_name": turn.actor.player_id,
         "identity": turn.actor.role,
         "is_impostor": int(turn.actor.role.lower() == "impostor"),
         "model": turn.actor.model,
         "personality": turn.actor.personality or "",
-                                      
         "is_speak": bool(speech),
         "speech": speech,
         "utterance_deception_status": status,
@@ -144,7 +131,6 @@ def turn_to_row(turn: TurnRecordModel, split: str) -> dict[str, Any]:
         ),
         "num_claims": len(claims),
         "num_resolved_claims": sum(1 for c in claims if c.get("resolution") == "resolved"),
-                             
         "system_prompt": turn.model_input.system_prompt,
         "user_prompt": turn.model_input.user_prompt,
         "role_private_context": str(sections.get("role_private_context", "")),
@@ -154,8 +140,6 @@ def turn_to_row(turn: TurnRecordModel, split: str) -> dict[str, Any]:
         "memory_context": str(sections.get("memory_context", "")),
         "action_list": str(sections.get("action_list", "")),
         "generated_rationale": turn.model_output.generated_rationale,
-                                                                                
-                                                                        
         "generated_action": str((turn.model_output.action or {}).get("rendered", "")),
         "requested_action": str(
             (turn.model_output.requested_action or {}).get("rendered", "")
@@ -167,7 +151,6 @@ def turn_to_row(turn: TurnRecordModel, split: str) -> dict[str, Any]:
         "probe_text": probe_text,
         "probe_text_no_role": _excise(probe_text, role_span),
         "probe_regions": json.dumps(turn.probe_regions),
-                     
         "parse_status": turn.model_output.parse_status,
         "action_valid": bool(turn.evaluation.get("action_valid", True)),
         "validation_warnings": ",".join(
@@ -177,7 +160,6 @@ def turn_to_row(turn: TurnRecordModel, split: str) -> dict[str, Any]:
 
 
 def _excise(text: str, span: list[int] | None) -> str:
-    pass
     if not span or len(span) != 2:
         return text
     start, end = span
@@ -196,10 +178,9 @@ def build_v2_dataset(
     labelled_only: bool = False,
     write_parquet: bool = True,
 ) -> Path:
-    pass
     try:
         from datasets import Dataset, DatasetDict
-    except ImportError as exc:                                             
+    except ImportError as exc:
         msg = "The 'datasets' library is required to build HF datasets."
         raise ImportError(msg) from exc
 
@@ -249,11 +230,10 @@ def build_v2_dataset(
 
 
 def _assignment_for(directory: Path, strategy: str, seed: int) -> SplitAssignment:
-    pass
     existing = load_splits(directory)
     if existing is not None and existing.strategy == strategy and existing.seed == seed:
         return existing
-    assignment = build_splits(directory, strategy=strategy, seed=seed)                          
+    assignment = build_splits(directory, strategy=strategy, seed=seed)
     write_splits(directory, assignment)
     return assignment
 

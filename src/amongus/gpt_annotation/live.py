@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import json
@@ -10,13 +8,11 @@ from ..logging import get_logger
 
 logger = get_logger()
 
-                                                                             
-                                                
+
 RATE_LIMIT_INITIAL_BACKOFF_S = 5.0
 RATE_LIMIT_MAX_BACKOFF_S = 60.0
 
-                                                                          
-                                                                       
+
 TRANSIENT_MAX_RETRIES = 5
 TRANSIENT_MAX_BACKOFF_S = 60.0
 
@@ -30,7 +26,6 @@ def call_live(
     response_format: dict[str, object],
     max_tokens: int,
 ) -> tuple[dict[str, Any] | None, str | None, str | None, dict[str, Any] | None]:
-    pass
     import openai
 
     rate_limit_backoff = RATE_LIMIT_INITIAL_BACKOFF_S
@@ -92,7 +87,6 @@ def call_live(
 
 
 def _retry_after_seconds(exc: Any) -> float | None:
-    pass
     response = getattr(exc, "response", None)
     headers = getattr(response, "headers", None)
     if not headers:

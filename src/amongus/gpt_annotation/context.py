@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import json
@@ -9,16 +7,12 @@ from typing import Any
 from ..data.ingest import iter_games, iter_turns
 from ..data.schema_v2 import EVENTS_FILE, METADATA_FILE, WORLD_STATES_FILE, TurnRecordModel
 
-                                                                            
-                                                         
+
 WORLD_STATE_HISTORY_LOOKBACK = 3
 
 
 class DatasetContext:
-    pass
-
     def __init__(self, dataset_dir: str | Path) -> None:
-        pass
         self.dataset_dir = Path(dataset_dir)
         self.turns: list[TurnRecordModel] = list(iter_turns(self.dataset_dir))
         self.events_by_game = _load_events(self.dataset_dir)
@@ -30,7 +24,6 @@ class DatasetContext:
 
 
 def build_turn_context(turn: TurnRecordModel, ctx: DatasetContext) -> dict[str, Any]:
-    pass
     game_events = ctx.events_by_game.get(turn.game_id, [])
     seq_after = _event_seq_after(turn)
     objective_events = [e for e in game_events if int(e.get("seq", -1)) < seq_after]
@@ -86,7 +79,6 @@ def build_turn_context(turn: TurnRecordModel, ctx: DatasetContext) -> dict[str, 
 
 
 def _event_seq_after(turn: TurnRecordModel) -> int:
-    pass
     evaluation = turn.evaluation if isinstance(turn.evaluation, dict) else {}
     value = evaluation.get("event_seq_after")
     if isinstance(value, int):
@@ -99,14 +91,12 @@ def _event_seq_after(turn: TurnRecordModel) -> int:
 
 
 def _snapshot_at(snapshots: list[dict[str, Any]], ref: int) -> dict[str, Any] | None:
-    pass
     if ref is None or ref < 0:
         return None
     return next((s for s in snapshots if s.get("index") == ref), None)
 
 
 def _recent_history(snapshots: list[dict[str, Any]], before_ref: int) -> list[dict[str, Any]]:
-    pass
     if before_ref is None or before_ref < 0:
         return []
     prior = [s for s in snapshots if isinstance(s.get("index"), int) and s["index"] < before_ref]
@@ -124,7 +114,6 @@ def _recent_history(snapshots: list[dict[str, Any]], before_ref: int) -> list[di
 
 
 def _actor_location(private: dict[str, Any], actor_name: str) -> str:
-    pass
     memory = private.get("structured_memory")
     if isinstance(memory, dict):
         locations = memory.get("last_known_locations")
@@ -136,7 +125,6 @@ def _actor_location(private: dict[str, Any], actor_name: str) -> str:
 
 
 def _roster(players: list[dict[str, Any]]) -> list[dict[str, str]]:
-    pass
     roster = []
     for player in players:
         name = player.get("name")
@@ -147,7 +135,6 @@ def _roster(players: list[dict[str, Any]]) -> list[dict[str, str]]:
 
 
 def _load_events(dataset_dir: Path) -> dict[str, list[dict[str, Any]]]:
-    pass
     path = dataset_dir / EVENTS_FILE
     if not path.exists():
         msg = f"{EVENTS_FILE} not found under {dataset_dir}; required input for GPT annotation."
@@ -163,7 +150,6 @@ def _load_events(dataset_dir: Path) -> dict[str, list[dict[str, Any]]]:
 
 
 def _load_world_states(dataset_dir: Path) -> dict[str, list[dict[str, Any]]]:
-    pass
     path = dataset_dir / WORLD_STATES_FILE
     if not path.exists():
         msg = (
@@ -183,7 +169,6 @@ def _load_world_states(dataset_dir: Path) -> dict[str, list[dict[str, Any]]]:
 
 
 def _load_metadata(dataset_dir: Path) -> dict[str, Any]:
-    pass
     path = dataset_dir / METADATA_FILE
     if not path.exists():
         msg = f"{METADATA_FILE} not found under {dataset_dir}; required input for GPT annotation."

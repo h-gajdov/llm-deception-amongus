@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import json
@@ -56,7 +54,6 @@ the JSON structure.
 
 
 def build_user_message(turn_context: dict[str, object]) -> str:
-    pass
     return json.dumps(turn_context, ensure_ascii=False, separators=(",", ":"))
 
 

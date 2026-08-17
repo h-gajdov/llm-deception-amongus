@@ -1,28 +1,3 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 dataset_dir: data/processed/contrastive
 output_dir: data/probes/phi-4-last10
 
@@ -38,8 +13,6 @@ pooling: last_n
 pooling_tokens: 20
 max_length: 16384
 extraction_batch_size: 16
-
-
 
 debug_tokens: 3
 
@@ -62,6 +35,5 @@ tracking:
     enabled: true
     experiment: amongus-probes
     run_name: phi-4-last10
-
 
 seed: 0

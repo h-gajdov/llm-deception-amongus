@@ -1,13 +1,10 @@
-
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 
 from .events import Perception, PerceptionSource
 
-                                                                            
-                                   
+
 MAX_WITNESSED = 20
 MAX_HEARD = 20
 MAX_OWN_ACTIONS = 20
@@ -16,41 +13,32 @@ MAX_PUBLIC_FACTS = 15
 
 @dataclass
 class LocationBelief:
-    pass
-
     room: str
     timestep: int
     source: PerceptionSource
 
     def to_dict(self) -> dict[str, object]:
-        pass
         return {"room": self.room, "timestep": self.timestep, "source": self.source.value}
 
 
 @dataclass
 class HeardStatement:
-    pass
-
     timestep: int
     speaker: str
     text: str
 
     def to_dict(self) -> dict[str, object]:
-        pass
         return {"timestep": self.timestep, "speaker": self.speaker, "text": self.text}
 
 
 @dataclass
 class WitnessedEvent:
-    pass
-
     timestep: int
     text: str
     event_type: str
     actor_identified: bool
 
     def to_dict(self) -> dict[str, object]:
-        pass
         return {
             "timestep": self.timestep,
             "text": self.text,
@@ -61,8 +49,6 @@ class WitnessedEvent:
 
 @dataclass
 class StructuredMemory:
-    pass
-
     last_known_locations: dict[str, LocationBelief] = field(default_factory=dict)
     witnessed_events: list[WitnessedEvent] = field(default_factory=list)
     heard_statements: list[HeardStatement] = field(default_factory=list)
@@ -71,11 +57,7 @@ class StructuredMemory:
     own_actions: list[str] = field(default_factory=list)
     own_route: list[tuple[int, str]] = field(default_factory=list)
 
-                                                                          
-             
-                                                                          
     def absorb(self, perception: Perception) -> None:
-        pass
         if perception.source is PerceptionSource.HEARD:
             self._absorb_heard(perception)
         elif perception.source is PerceptionSource.PUBLIC:
@@ -84,7 +66,6 @@ class StructuredMemory:
             self._absorb_direct(perception)
 
     def _absorb_direct(self, perception: Perception) -> None:
-        pass
         self.witnessed_events.append(
             WitnessedEvent(
                 timestep=perception.timestep,
@@ -102,7 +83,6 @@ class StructuredMemory:
             )
 
     def _absorb_heard(self, perception: Perception) -> None:
-        pass
         self.heard_statements.append(
             HeardStatement(
                 timestep=perception.timestep,
@@ -113,17 +93,14 @@ class StructuredMemory:
         del self.heard_statements[:-MAX_HEARD]
 
     def _absorb_public(self, perception: Perception) -> None:
-        pass
         self.public_meeting_facts.append(f"[t={perception.timestep}] {perception.text}")
         del self.public_meeting_facts[:-MAX_PUBLIC_FACTS]
 
     def note_own_action(self, timestep: int, phase_label: str, rendered: str) -> None:
-        pass
         self.own_actions.append(f"[t={timestep}] [{phase_label}] {rendered}")
         del self.own_actions[:-MAX_OWN_ACTIONS]
 
     def note_own_location(self, name: str, room: str, timestep: int) -> None:
-        pass
         self.last_known_locations[name] = LocationBelief(
             room=room, timestep=timestep, source=PerceptionSource.SELF
         )
@@ -132,23 +109,17 @@ class StructuredMemory:
             del self.own_route[:-MAX_OWN_ACTIONS]
 
     def route_since(self, timestep: int) -> list[str]:
-        pass
         rooms = [room for when, room in self.own_route if when >= timestep]
         if rooms:
             return rooms
         return [self.own_route[-1][1]] if self.own_route else []
 
     def note_accusation(self, accuser: str, target: str) -> None:
-        pass
         accusers = self.suspicions.setdefault(target, [])
         if accuser not in accusers:
             accusers.append(accuser)
 
-                                                                          
-               
-                                                                          
     def render_condensed(self) -> str:
-        pass
         parts: list[str] = []
         if self.own_route:
             route = " -> ".join(room for _, room in self.own_route[-6:])
@@ -175,7 +146,6 @@ class StructuredMemory:
         return "\n".join(parts)
 
     def to_dict(self) -> dict[str, object]:
-        pass
         return {
             "last_known_locations": {
                 name: belief.to_dict() for name, belief in self.last_known_locations.items()
@@ -190,7 +160,6 @@ class StructuredMemory:
 
 
 def _unquote(text: str) -> str:
-    pass
     marker = ' said: "'
     idx = text.find(marker)
     if idx == -1:

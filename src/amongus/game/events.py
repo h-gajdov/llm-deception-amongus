@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -9,8 +7,6 @@ from .enums import Phase
 
 
 class PerceptionSource(str, Enum):
-    pass
-
     SELF = "self"
     pass
 
@@ -28,8 +24,6 @@ class PerceptionSource(str, Enum):
 
 
 class EventType(str, Enum):
-    pass
-
     GAME_START = "game_start"
     MOVE = "move"
     VENT = "vent"
@@ -49,10 +43,6 @@ class EventType(str, Enum):
     GAME_END = "game_end"
 
 
-                                                                                
-                                                                               
-                                                                                  
-                                        
 PUBLIC_EVENTS: frozenset[EventType] = frozenset(
     {
         EventType.BODY_REPORTED,
@@ -66,8 +56,6 @@ PUBLIC_EVENTS: frozenset[EventType] = frozenset(
 
 @dataclass(frozen=True)
 class WorldEvent:
-    pass
-
     seq: int
     timestep: int
     phase: Phase
@@ -83,11 +71,9 @@ class WorldEvent:
 
     @property
     def is_public(self) -> bool:
-        pass
         return self.type in PUBLIC_EVENTS
 
     def to_dict(self) -> dict[str, object]:
-        pass
         return {
             "seq": self.seq,
             "timestep": self.timestep,
@@ -106,8 +92,6 @@ class WorldEvent:
 
 @dataclass(frozen=True)
 class Perception:
-    pass
-
     event_seq: int
     observer: int
     event_type: EventType
@@ -122,11 +106,9 @@ class Perception:
     speaker_name: str | None = None
 
     def render(self) -> str:
-        pass
         return f"[t={self.timestep}] {self.text}"
 
     def to_dict(self) -> dict[str, object]:
-        pass
         return {
             "event_seq": self.event_seq,
             "event_type": self.event_type.value,
@@ -144,8 +126,6 @@ class Perception:
 
 @dataclass
 class EventLog:
-    pass
-
     events: list[WorldEvent] = field(default_factory=list)
     _next_seq: int = 0
 
@@ -164,7 +144,6 @@ class EventLog:
         private_to: tuple[int, ...] = (),
         **payload: object,
     ) -> WorldEvent:
-        pass
         event = WorldEvent(
             seq=self._next_seq,
             timestep=timestep,
@@ -184,20 +163,16 @@ class EventLog:
         return event
 
     def of_type(self, *types: EventType) -> list[WorldEvent]:
-        pass
         wanted = set(types)
         return [e for e in self.events if e.type in wanted]
 
     def since(self, seq: int) -> list[WorldEvent]:
-        pass
         return [e for e in self.events if e.seq >= seq]
 
     def between(self, start_seq: int, end_seq: int) -> list[WorldEvent]:
-        pass
         return [e for e in self.events if start_seq <= e.seq < end_seq]
 
     def to_list(self) -> list[dict[str, object]]:
-        pass
         return [e.to_dict() for e in self.events]
 
 

@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import random
@@ -14,12 +12,11 @@ from .truthfulqa import build_dqa, build_tqa, load_truthfulqa_rows
 
 logger = get_logger()
 
-                                                                          
+
 DEFAULT_TEST_SIZE = 0.2
 
 
 def build_examples(config: ContrastiveConfig) -> list[ContrastiveExample]:
-    pass
     rng = random.Random(config.seed)
     examples: list[ContrastiveExample] = []
     needs_tqa = Source.TQA in config.sources
@@ -50,7 +47,6 @@ def build_examples(config: ContrastiveConfig) -> list[ContrastiveExample]:
 
 
 def _build_repeng_source(config: ContrastiveConfig) -> list[ContrastiveExample]:
-    pass
     if config.repeng_statements_path is None:
         msg = (
             "RepEng requested but 'repeng_statements_path' is not set. Provide a "
@@ -66,10 +62,9 @@ def _build_repeng_source(config: ContrastiveConfig) -> list[ContrastiveExample]:
 
 
 def build_contrastive_dataset(config: ContrastiveConfig) -> Path:
-    pass
     try:
         from datasets import Dataset
-    except ImportError as exc:                                             
+    except ImportError as exc:
         msg = "The 'datasets' library is required to build contrastive datasets."
         raise ImportError(msg) from exc
 
@@ -94,7 +89,6 @@ def build_contrastive_dataset(config: ContrastiveConfig) -> Path:
 
 
 def _log_composition(examples: list[ContrastiveExample]) -> None:
-    pass
     by_source: Counter[str] = Counter(e.source.value for e in examples)
     by_label: Counter[str] = Counter(e.label_name for e in examples)
     logger.info("Built {} contrastive examples.", len(examples))

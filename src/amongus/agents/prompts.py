@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -10,9 +8,7 @@ from ..game.game_map import SKELD_MAP_DESCRIPTION
 from ..game.observation import SECTION_SEPARATOR, render_sections
 from ..game.view import PlayerView
 
-                                                                             
-                                                                             
-                                                                         
+
 PROBE_TEXT_SEPARATOR = "\n\n"
 
 _OUTPUT_FORMAT = """Answer in exactly this format:
@@ -35,8 +31,7 @@ character for character. Do not invent an action, do not pick an action type
 that is not listed, and do not change a room name or a target name. An answer
 that is not on the list is discarded and you simply lose the turn."""
 
-                                                                                
-                      
+
 _SHARED_SYSTEM = """You are {name}, playing Among Us on the spaceship Skeld.
 
 These rules are common knowledge to every player:
@@ -70,9 +65,7 @@ SPEAK_INSTRUCTION = (
     "task or vote this turn."
 )
 
-                                                                              
-                                                                               
-                                     
+
 VOTE_INSTRUCTION = (
     "This turn is the vote, not a discussion turn. Choose exactly one VOTE line "
     "from Available actions and answer with that line and nothing else. Do not "
@@ -81,8 +74,7 @@ VOTE_INSTRUCTION = (
     "instead -- only the VOTE line counts."
 )
 
-                                                                                
-                                                           
+
 TASK_INSTRUCTION = (
     "This turn is a task turn. Speaking is not possible: you may only talk when "
     "a SPEAK action appears in the Available actions list, which happens during "
@@ -101,15 +93,12 @@ _RETRY_INSTRUCTION = (
 
 @dataclass
 class PromptBundle:
-    pass
-
     system_prompt: str
     user_prompt: str
     sections: dict[str, str] = field(default_factory=dict)
     spans: dict[str, list[int]] = field(default_factory=dict)
 
     def response_offset(self) -> int:
-        pass
         sep = len(PROBE_TEXT_SEPARATOR)
         return len(self.system_prompt) + sep + len(self.user_prompt) + sep
 
@@ -119,7 +108,6 @@ def build_prompt(
     agent_config: AgentConfig | None = None,
     retry_hint: str | None = None,
 ) -> PromptBundle:
-    pass
     cfg = agent_config or AgentConfig()
     system_prompt = _build_system_prompt(view, cfg)
     sections = render_sections(view)
@@ -142,7 +130,6 @@ def build_prompt(
 
 
 def _phase_instruction(view: PlayerView) -> tuple[str, str]:
-    pass
     verbs = {action.split(" ", 1)[0].upper() for action in view.available_actions}
     if view.phase is Phase.MEETING and "SPEAK" in verbs:
         return "speak_instruction", SPEAK_INSTRUCTION
@@ -152,7 +139,6 @@ def _phase_instruction(view: PlayerView) -> tuple[str, str]:
 
 
 def _build_system_prompt(view: PlayerView, cfg: AgentConfig) -> str:
-    pass
     style = f"Speak and write in this style: {cfg.language_style}\n\n" if cfg.language_style else ""
     return _SHARED_SYSTEM.format(
         name=view.player_name,
@@ -165,7 +151,6 @@ def _build_system_prompt(view: PlayerView, cfg: AgentConfig) -> str:
 def _augment_role_section(
     sections: list[tuple[str, str]], cfg: AgentConfig, view: PlayerView
 ) -> list[tuple[str, str]]:
-    pass
     strategy = (
         cfg.impostor_strategy_prompt
         if view.role_private.teammate_names or _is_impostor(view)
@@ -182,7 +167,6 @@ def _augment_role_section(
 def _inline_role_section(
     sections: list[tuple[str, str]], view: PlayerView, cfg: AgentConfig
 ) -> list[tuple[str, str]]:
-    pass
     merged = _augment_role_section(sections, cfg, view)
     header = next((t for n, t in merged if n == "header"), "")
     role = next((t for n, t in merged if n == "role_private_context"), "")
@@ -196,12 +180,10 @@ def _inline_role_section(
 
 
 def _is_impostor(view: PlayerView) -> bool:
-    pass
     return view.role_private.tasks_are_fake
 
 
 def _assemble(sections: list[tuple[str, str]], base: int) -> tuple[str, dict[str, list[int]]]:
-    pass
     spans: dict[str, list[int]] = {}
     parts: list[str] = []
     cursor = 0
@@ -217,7 +199,6 @@ def _assemble(sections: list[tuple[str, str]], base: int) -> tuple[str, dict[str
 
 
 def render_user_message(bundle: PromptBundle) -> str:
-    pass
     return bundle.user_prompt
 
 

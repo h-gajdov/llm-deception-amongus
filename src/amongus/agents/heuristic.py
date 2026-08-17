@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import random
@@ -8,24 +6,19 @@ from ..game.agent_api import Decision, DecisionContext
 from ..game.enums import ActionType
 from .prompts import build_prompt
 
-                                                                                
-                                               
+
 _RISKY_KILL_CHANCE = 0.2
-                                                                              
-                                                        
+
+
 _IMPOSTOR_HONEST_CHANCE = 0.35
 
 
 class HeuristicAgent:
-    pass
-
     def __init__(self, seed: int = 0, model_name: str = "heuristic") -> None:
-        pass
         self._rng = random.Random(seed)
         self.model_name = model_name
 
     def act(self, ctx: DecisionContext) -> Decision:
-        pass
         action = self._choose(ctx)
         speech = self._speak(ctx) if action.type is ActionType.SPEAK else None
         bundle = build_prompt(ctx.view)
@@ -53,11 +46,7 @@ class HeuristicAgent:
             spans=bundle.spans,
         )
 
-                                                                          
-                   
-                                                                          
     def _choose(self, ctx: DecisionContext):
-        pass
         actions = ctx.actions
         by_type: dict[ActionType, list] = {}
         for action in actions:
@@ -79,14 +68,12 @@ class HeuristicAgent:
         return actions[0]
 
     def _take_kill(self, ctx: DecisionContext) -> bool:
-        pass
         bystanders = len(ctx.view.co_located) - 1
         if bystanders <= 0:
             return True
         return self._rng.random() < _RISKY_KILL_CHANCE
 
     def _move(self, ctx: DecisionContext, moves: list):
-        pass
         target_room = self._next_task_room(ctx)
         if target_room is not None:
             path = ctx.game_map.shortest_walk_path(ctx.view.location, target_room)
@@ -98,7 +85,6 @@ class HeuristicAgent:
 
     @staticmethod
     def _next_task_room(ctx: DecisionContext) -> str | None:
-        pass
         for entry in ctx.view.role_private.tasks:
             if entry.endswith("[DONE]"):
                 continue
@@ -108,7 +94,6 @@ class HeuristicAgent:
         return None
 
     def _vote(self, ctx: DecisionContext, votes: list):
-        pass
         suspicions = ctx.player.private.memory.suspicions
         if suspicions:
             ranked = sorted(suspicions.items(), key=lambda kv: (-len(kv[1]), kv[0]))
@@ -118,11 +103,7 @@ class HeuristicAgent:
                     return choice
         return next((v for v in votes if v.target_name == "Skip"), votes[0])
 
-                                                                          
-                   
-                                                                          
     def _speak(self, ctx: DecisionContext) -> str:
-        pass
         view = ctx.view
         witnessed_kill = next(
             (p for p in ctx.player.private.perceptions if p.event_type.value == "kill"),
@@ -133,9 +114,6 @@ class HeuristicAgent:
         if witnessed_kill is not None and (
             not is_impostor or self._rng.random() < _IMPOSTOR_HONEST_CHANCE
         ):
-                                                                                
-                                                                                 
-                                                
             victim = witnessed_kill.target_name or "someone"
             if witnessed_kill.actor_identified and witnessed_kill.actor_name:
                 return (
@@ -159,8 +137,6 @@ class HeuristicAgent:
             None,
         )
         if body is not None:
-                                                                               
-                                                                  
             return (
                 f"I was in {last_room}. I found {body.target_name or 'a body'} dead in {body.room}."
             )
@@ -168,12 +144,10 @@ class HeuristicAgent:
 
     @staticmethod
     def _last_own_room(ctx: DecisionContext) -> str:
-        pass
         route = ctx.player.private.memory.own_route
         return route[-1][1] if route else ctx.view.location
 
     def _room_i_was_not_in(self, ctx: DecisionContext) -> str:
-        pass
         here = ctx.view.location
         far = [
             room
@@ -184,7 +158,6 @@ class HeuristicAgent:
         return self._rng.choice(candidates) if candidates else here
 
     def _guess_suspect(self, ctx: DecisionContext) -> str | None:
-        pass
         others = [name for name in ctx.view.meeting_roster if name != ctx.player.name]
         return self._rng.choice(others) if others else None
 

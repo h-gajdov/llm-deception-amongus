@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import json
@@ -18,7 +16,7 @@ from .activations import (
 from .config import ModelConfig
 from .train import TorchProbeState, example_scores
 
-if TYPE_CHECKING:                                  
+if TYPE_CHECKING:
     from collections.abc import Sequence
 
     import numpy as np
@@ -31,26 +29,22 @@ ChartFormat = Literal["png", "html"]
 
 @dataclass
 class LoadedProbe:
-    pass
-
     state: TorchProbeState
     model_name: str
     layer: int
     pooling: str
     use_chat_template: bool
     max_length: int
-                                                                             
-                                                                            
+
     pooling_tokens: int = 1
 
 
 def load_probe(probe_path: str | Path) -> LoadedProbe:
-    pass
     import joblib
 
     payload = joblib.load(Path(probe_path))
     state = payload["state"]
-    if not isinstance(state, TorchProbeState):                                
+    if not isinstance(state, TorchProbeState):
         msg = f"{probe_path} does not contain a TorchProbeState."
         raise TypeError(msg)
     return LoadedProbe(
@@ -65,17 +59,14 @@ def load_probe(probe_path: str | Path) -> LoadedProbe:
 
 
 def render_eval_text(row: dict[str, Any], mode: TextMode) -> str:
-    pass
     return render_eval_text_with_span(row, mode)[0]
 
 
 def render_eval_text_with_span(
     row: dict[str, Any], mode: TextMode
 ) -> tuple[str, tuple[int, int] | None]:
-    pass
     response = (row.get("full_response") or "").strip()
     if not response:
-                                                                          
         thinking = (row.get("thinking") or "").strip()
         action = (row.get("action") or "").strip()
         response = "\n".join(p for p in (thinking, action) if p)
@@ -93,8 +84,6 @@ def render_eval_text_with_span(
 
 @dataclass
 class EvalReport:
-    pass
-
     probe_path: str
     dataset_dir: str
     model_name: str
@@ -111,20 +100,17 @@ class EvalReport:
     precision: float
     recall: float
     auroc: float | None
-                                                                         
+
     baseline_accuracy: float
     baseline_auroc: float = 0.5
-                                                                               
-                                                                          
+
     pooling_tokens: int = 1
     n_tokens: int = 0
     report_path: str = ""
-                                                                               
-                                                                      
+
     label: str = ""
 
     def summary_line(self) -> str:
-        pass
         auroc = "n/a" if self.auroc is None else f"{self.auroc:.3f}"
         return (
             f"AUROC={auroc} (chance 0.500) | acc={self.accuracy:.3f} "
@@ -135,8 +121,6 @@ class EvalReport:
 
 @dataclass
 class _Scored:
-    pass
-
     y_true: np.ndarray
     y_pred: np.ndarray
     y_prob: np.ndarray
@@ -144,11 +128,10 @@ class _Scored:
 
 
 def _load_rows(dataset_dir: Path, split: str, limit: int | None) -> list[dict[str, Any]]:
-    pass
     from datasets import DatasetDict, concatenate_datasets, load_from_disk
 
     dataset = load_from_disk(str(dataset_dir))
-    if not isinstance(dataset, DatasetDict):                            
+    if not isinstance(dataset, DatasetDict):
         selected = dataset
     elif split == "all":
         selected = concatenate_datasets([dataset[s] for s in dataset])
@@ -163,8 +146,7 @@ def _load_rows(dataset_dir: Path, split: str, limit: int | None) -> list[dict[st
 
 
 def _score(probe: LoadedProbe, activations: TokenActivations, y_true: np.ndarray) -> _Scored:
-    pass
-    x, owner = activations.layer_tokens(0)                                      
+    x, owner = activations.layer_tokens(0)
     token_prob = probe.state.predict_proba(x)
     y_prob = example_scores(token_prob, owner, activations.n_examples)
     y_pred = (y_prob > 0.5).astype(int)
@@ -172,7 +154,6 @@ def _score(probe: LoadedProbe, activations: TokenActivations, y_true: np.ndarray
 
 
 def _metrics(scored: _Scored) -> dict[str, Any]:
-    pass
     import numpy as np
     from sklearn.metrics import (
         accuracy_score,
@@ -187,9 +168,9 @@ def _metrics(scored: _Scored) -> dict[str, Any]:
     positive_rate = float(y_true.mean()) if len(y_true) else 0.0
     return {
         "accuracy": float(accuracy_score(y_true, y_pred)),
-        "f1": float(f1_score(y_true, y_pred, zero_division=0.0)),                          
-        "precision": float(precision_score(y_true, y_pred, zero_division=0.0)),                          
-        "recall": float(recall_score(y_true, y_pred, zero_division=0.0)),                          
+        "f1": float(f1_score(y_true, y_pred, zero_division=0.0)),
+        "precision": float(precision_score(y_true, y_pred, zero_division=0.0)),
+        "recall": float(recall_score(y_true, y_pred, zero_division=0.0)),
         "auroc": float(roc_auc_score(y_true, y_prob)) if both_classes else None,
         "baseline_accuracy": float(max(positive_rate, 1.0 - positive_rate)),
         "n_impostor": int(np.sum(y_true)),
@@ -198,13 +179,12 @@ def _metrics(scored: _Scored) -> dict[str, Any]:
 
 
 def _report_from_dict(data: dict[str, Any]) -> EvalReport | None:
-    pass
     from dataclasses import fields
 
     known = {f.name for f in fields(EvalReport)}
     try:
         return EvalReport(**{k: v for k, v in data.items() if k in known})
-    except TypeError:                                                  
+    except TypeError:
         return None
 
 
@@ -217,7 +197,6 @@ def _cached_report(
     speak_only: bool,
     pooling_tokens: int,
 ) -> EvalReport | None:
-    pass
     try:
         data = json.loads(out.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
@@ -251,12 +230,10 @@ def evaluate_probe(
     output_path: str | Path | None = None,
     reuse: bool = True,
 ) -> EvalReport:
-    pass
     import numpy as np
 
     out = Path(output_path) if output_path else Path(probe_path).parent / "eval_amongus.json"
-                                                                                  
-                                                                             
+
     probe = load_probe(probe_path)
     if reuse and limit is None and out.exists():
         cached = _cached_report(
@@ -288,8 +265,7 @@ def evaluate_probe(
 
     device = resolve_device(device)
     model, tokenizer = load_model_and_tokenizer(ModelConfig(name=probe.model_name), device)
-                                                                                  
-                                                                    
+
     tokenizer.truncation_side = "left"
 
     rendered = [render_eval_text_with_span(r, text_mode) for r in rows]
@@ -321,7 +297,7 @@ def evaluate_probe(
         text_mode=text_mode,
         split=split,
         speak_only=speak_only,
-        n=len(rows),                          
+        n=len(rows),
         pooling_tokens=probe.pooling_tokens,
         n_tokens=activations.n_tokens,
         **metrics,
@@ -336,8 +312,6 @@ def evaluate_probe(
 
 @dataclass
 class ComparisonReport:
-    pass
-
     reports: list[EvalReport]
     labels: list[str]
     dataset_dir: str
@@ -349,18 +323,15 @@ class ComparisonReport:
     json_path: str = ""
 
     def best(self) -> EvalReport:
-        pass
         return max(self.reports, key=lambda r: ((r.auroc or 0.0), r.accuracy))
 
 
 def _label_for(probe_path: Path) -> str:
-    pass
     parent = probe_path.parent.name
     return parent or probe_path.stem
 
 
 def _dedupe_labels(labels: list[str]) -> list[str]:
-    pass
     seen: dict[str, int] = {}
     out: list[str] = []
     for label in labels:
@@ -384,7 +355,6 @@ def compare_probes(
     fmt: ChartFormat = "png",
     reuse: bool = True,
 ) -> ComparisonReport:
-    pass
     paths = [Path(p) for p in probe_paths]
     if not paths:
         msg = "compare_probes needs at least one probe path."
@@ -402,8 +372,7 @@ def compare_probes(
     reports: list[EvalReport] = []
     for probe_path, label in zip(paths, resolved_labels, strict=True):
         logger.info("Comparison: evaluating probe {} ({}).", label, probe_path)
-                                                                             
-                                                                    
+
         report = evaluate_probe(
             probe_path=probe_path,
             dataset_dir=dataset_dir,
@@ -417,7 +386,7 @@ def compare_probes(
             reuse=reuse,
         )
         report.label = label
-                                                                  
+
         (out_dir / f"eval_{label}.json").write_text(
             json.dumps(asdict(report), indent=2), encoding="utf-8"
         )
@@ -437,7 +406,6 @@ def compare_probes(
 
 
 def _persist_comparison(comparison: ComparisonReport, out_dir: Path, fmt: ChartFormat) -> None:
-    pass
     meta = {
         "dataset_dir": comparison.dataset_dir,
         "split": comparison.split,

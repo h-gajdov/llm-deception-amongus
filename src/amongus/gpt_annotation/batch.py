@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import json
@@ -20,18 +18,10 @@ BATCH_ENDPOINT = "/v1/chat/completions"
 COMPLETION_WINDOW = "24h"
 DEFAULT_MAX_OUTPUT_TOKENS = 4096
 
-                                                                             
-                                                                        
-                                                                            
-                                                                 
-                                                                     
-                                                                      
-                                                                        
-                                                                            
-             
+
 DEFAULT_BATCH_SIZE = 300
 
-                                                           
+
 TERMINAL_STATUSES = frozenset({"completed", "failed", "expired", "cancelled"})
 
 
@@ -40,14 +30,12 @@ class AnnotationClientError(RuntimeError):
 
 
 def resolve_model(explicit: str | None) -> str:
-    pass
     if explicit:
         return explicit
     return os.environ.get(MODEL_ENV_VAR) or DEFAULT_MODEL
 
 
 def get_client() -> Any:
-    pass
     try:
         import openai
     except ImportError as exc:
@@ -71,7 +59,6 @@ def build_batch_request(
     response_format: dict[str, object],
     max_tokens: int = DEFAULT_MAX_OUTPUT_TOKENS,
 ) -> dict[str, object]:
-    pass
     return {
         "custom_id": custom_id,
         "method": "POST",
@@ -90,7 +77,6 @@ def build_batch_request(
 
 
 def write_batch_input(path: Path, requests: list[dict[str, object]]) -> None:
-    pass
     with path.open("w", encoding="utf-8") as handle:
         for request in requests:
             handle.write(json.dumps(request, ensure_ascii=False))
@@ -98,7 +84,6 @@ def write_batch_input(path: Path, requests: list[dict[str, object]]) -> None:
 
 
 def submit_batch(client: Any, input_path: Path) -> Any:
-    pass
     with input_path.open("rb") as handle:
         uploaded = client.files.create(file=handle, purpose="batch")
     batch = client.batches.create(
@@ -111,12 +96,10 @@ def submit_batch(client: Any, input_path: Path) -> Any:
 
 
 def retrieve_batch(client: Any, batch_id: str) -> Any:
-    pass
     return client.batches.retrieve(batch_id)
 
 
 def describe_batch_errors(batch: Any) -> str:
-    pass
     errors = getattr(batch, "errors", None)
     data = getattr(errors, "data", None) if errors else None
     if not data:
@@ -131,7 +114,6 @@ def describe_batch_errors(batch: Any) -> str:
 
 
 def request_counts_dict(batch: Any) -> dict[str, int] | None:
-    pass
     counts = getattr(batch, "request_counts", None)
     if counts is None:
         return None
@@ -151,7 +133,6 @@ def submit_and_maybe_wait(
     poll_timeout_s: float | None,
     checkpoint: Callable[[Any], None],
 ) -> Any:
-    pass
     batch = submit_batch(client, input_path)
     if wait:
         checkpoint(batch)
@@ -164,7 +145,6 @@ def submit_and_maybe_wait(
 def poll_batch(
     client: Any, batch_id: str, *, poll_interval_s: float, timeout_s: float | None = None
 ) -> Any:
-    pass
     start = time.monotonic()
     while True:
         batch = retrieve_batch(client, batch_id)
@@ -185,7 +165,6 @@ def poll_batch(
 
 
 def iter_batch_result_lines(client: Any, batch: Any) -> Iterator[dict[str, object]]:
-    pass
     for file_id in (getattr(batch, "output_file_id", None), getattr(batch, "error_file_id", None)):
         if not file_id:
             continue

@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import math
@@ -12,13 +10,10 @@ from .contrastive_viz import build_pairs, load_contrastive_splits, summarize
 
 logger = get_logger()
 
-                                                                            
-                                                                               
-                                                                   
+
 DEFAULT_PAIR_LIMIT = 600
 
-                                                                              
-                                             
+
 SPLIT_ORDER = ("train", "test")
 
 _HONEST = "honest"
@@ -29,7 +24,6 @@ _SIDES = (_HONEST, _DISHONEST)
 def collect_contrastive_page(
     dataset_dir: str | Path, *, pair_limit: int = DEFAULT_PAIR_LIMIT
 ) -> dict[str, Any] | None:
-    pass
     root = Path(dataset_dir)
     if not root.exists():
         logger.info("No contrastive dataset at {}; the site's data page is omitted.", root)
@@ -65,50 +59,40 @@ def collect_contrastive_page(
         "personas": personas,
         "pairs_total": len(pairs),
         "pairs_shown": len(shown),
-                                                                                     
-                                                                             
         "complete_pairs": sum(1 for pair in pairs if _complete(pair)),
         "alternates": len(rows) - sum(1 for pair in pairs for side in _SIDES if pair[side]),
-                                                                              
-                                       
         "cross_split_pairs": sum(1 for pair in pairs if _straddles(pair)),
         "pairs": [_pair(pair, index) for pair in shown],
     }
 
 
 def _ordered(splits: dict[str, list[dict[str, Any]]]) -> list[tuple[str, list[dict[str, Any]]]]:
-    pass
     known = [(name, splits[name]) for name in SPLIT_ORDER if name in splits]
     extra = [(name, rows) for name, rows in splits.items() if name not in SPLIT_ORDER]
     return known + extra
 
 
 def _complete(pair: dict[str, Any]) -> bool:
-    pass
     return bool(pair[_HONEST]) and bool(pair[_DISHONEST])
 
 
 def _straddles(pair: dict[str, Any]) -> bool:
-    pass
     if not _complete(pair):
         return False
     return pair[_HONEST].get("split") != pair[_DISHONEST].get("split")
 
 
 def _sorted_pairs(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    pass
     pairs = build_pairs(rows)
     return sorted(pairs, key=lambda pair: (str(pair["source"]), _index(str(pair["key"]))))
 
 
 def _index(key: str) -> tuple[int, str]:
-    pass
     tail = key.rsplit("-", 1)[-1]
     return (int(tail), "") if tail.isdigit() else (0, key)
 
 
 def _thin(pairs: list[dict[str, Any]], limit: int) -> list[dict[str, Any]]:
-    pass
     if limit <= 0 or len(pairs) <= limit:
         return pairs
     step = len(pairs) / limit
@@ -116,7 +100,6 @@ def _thin(pairs: list[dict[str, Any]], limit: int) -> list[dict[str, Any]]:
 
 
 def _splits(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    pass
     names = list(dict.fromkeys(str(row["split"]) for row in rows))
     return [
         {"name": name, **_counts([row for row in rows if str(row["split"]) == name])}
@@ -125,7 +108,6 @@ def _splits(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def _sources(rows: list[dict[str, Any]], pairs: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    pass
     names = sorted({str(row.get("source", "?")) for row in rows})
     out: list[dict[str, Any]] = []
     for name in names:
@@ -134,8 +116,6 @@ def _sources(rows: list[dict[str, Any]], pairs: list[dict[str, Any]]) -> list[di
         out.append(
             {
                 "name": name,
-                                                                                  
-                                                                                  
                 "axis": " / ".join(axes),
                 "pairs": sum(1 for pair in pairs if str(pair["source"]) == name),
                 "categories": len({row.get("category") for row in mine if row.get("category")}),
@@ -146,7 +126,6 @@ def _sources(rows: list[dict[str, Any]], pairs: list[dict[str, Any]]) -> list[di
 
 
 def _counts(rows: list[dict[str, Any]]) -> dict[str, int]:
-    pass
     by_label = Counter(str(row.get("label_name", "?")) for row in rows)
     return {
         "total": len(rows),
@@ -156,7 +135,6 @@ def _counts(rows: list[dict[str, Any]]) -> dict[str, int]:
 
 
 def _personas(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], dict[str, int]]:
-    pass
     counts: Counter[str] = Counter()
     sides: dict[str, set[str]] = {}
     for row in rows:
@@ -178,7 +156,6 @@ def _personas(rows: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], dict[st
 
 
 def _pair(pair: dict[str, Any], index: dict[str, int]) -> dict[str, Any]:
-    pass
     return {
         "key": pair["key"],
         "source": pair["source"],
@@ -190,7 +167,6 @@ def _pair(pair: dict[str, Any], index: dict[str, int]) -> dict[str, Any]:
 
 
 def _side(side: dict[str, Any] | None, index: dict[str, int]) -> dict[str, Any] | None:
-    pass
     if side is None:
         return None
     return {
@@ -201,7 +177,6 @@ def _side(side: dict[str, Any] | None, index: dict[str, int]) -> dict[str, Any] 
 
 
 def _text(value: object) -> str:
-    pass
     if isinstance(value, str):
         return value
     if value is None or (isinstance(value, float) and math.isnan(value)):

@@ -1,8 +1,6 @@
-
-
 from __future__ import annotations
 
-                                                           
+
 COLOR_HEX: dict[str, str] = {
     "red": "#C51111",
     "orange": "#EF7D0D",
@@ -18,8 +16,7 @@ COLOR_HEX: dict[str, str] = {
     "brown": "#71491E",
 }
 
-                                                                            
-                                            
+
 COLOR_EMOJI: dict[str, str] = {
     "red": "🔴",
     "orange": "🟠",
@@ -38,8 +35,7 @@ COLOR_EMOJI: dict[str, str] = {
 DEAD_EMOJI = "💀"
 UNKNOWN_EMOJI = "⭘"
 
-                                                                                
-                                                                       
+
 ROOM_GRID: dict[str, tuple[int, int]] = {
     "Upper Engine": (0, 0),
     "Cafeteria": (0, 3),
@@ -62,19 +58,16 @@ GRID_COLS = 6
 
 
 def color_of(name: str) -> str:
-    pass
     if ": " in name:
         return name.split(": ", 1)[1].strip().lower()
     return "unknown"
 
 
 def emoji_for(color: str) -> str:
-    pass
     return COLOR_EMOJI.get(color, UNKNOWN_EMOJI)
 
 
 def hex_for(color: str) -> str:
-    pass
     return COLOR_HEX.get(color, "#888888")
 
 

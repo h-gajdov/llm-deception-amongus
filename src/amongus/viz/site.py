@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import json
@@ -22,9 +20,7 @@ from .reconstruct import (
 
 logger = get_logger()
 
-                                                                  
-                                                                                
-                                                                                
+
 TURNS_FILE = "turns.jsonl"
 WORLD_STATES_FILE = "world-states.jsonl"
 GAMES_FILE = "games.jsonl"
@@ -32,10 +28,7 @@ SUMMARY_FILE = "summary.json"
 
 HOLISTIC_DIR = HOLISTIC_DIRNAME
 
-                                                                               
-                                                                                
-                                                                               
-                                                      
+
 DECEPTIVE_AT = 7
 TRUTHFUL_AT = 3
 
@@ -52,7 +45,6 @@ def build_site(
     contrastive_dir: str | Path | None = None,
     contrastive_pairs: int = DEFAULT_PAIR_LIMIT,
 ) -> Path:
-    pass
     source_root = Path(root)
     experiments = _find_experiments(source_root)
     if not experiments:
@@ -69,8 +61,7 @@ def build_site(
             catalogue.append(entry)
 
     _write_js(out / "data" / "index.js", "__AMONGUS_INDEX__", {"datasets": catalogue})
-                                                                                  
-                                                                         
+
     probes = None if probes_dir is None else collect_probe_pages(probes_dir)
     _write_js(out / "data" / "probes.js", "__AMONGUS_PROBES__", probes)
     contrastive = (
@@ -85,12 +76,10 @@ def build_site(
 
 
 def _find_experiments(root: Path) -> list[Path]:
-    pass
     return [directory for directory, _ in find_log_datasets(root)]
 
 
 def _build_one(source: Path, out: Path, limit: int | None) -> dict[str, Any] | None:
-    pass
     ratings_path = source / HOLISTIC_DIR / TURNS_FILE
     if (source / TURNS_FILE).exists():
         kind = KIND_V2
@@ -144,13 +133,9 @@ def _build_one(source: Path, out: Path, limit: int | None) -> dict[str, Any] | N
     }
 
 
-                                                                               
-                         
-                                                                               
 def _extract_v2(
     source: Path, limit: int | None, ratings_path: Path
 ) -> tuple[dict[str, dict[str, Any]], dict[str, list[dict[str, Any]]]]:
-    pass
     games = _load_games(source, limit)
     if not games:
         logger.warning("Skipping {}: no {} records.", source.name, GAMES_FILE)
@@ -172,7 +157,6 @@ def _extract_v2(
 
 
 def _load_rating_index(path: Path) -> dict[int, dict[str, Any]]:
-    pass
     out: dict[int, dict[str, Any]] = {}
     for line in _lines(path):
         row = json.loads(line)
@@ -184,7 +168,6 @@ def _load_rating_index(path: Path) -> dict[int, dict[str, Any]]:
 
 
 def _rating_index(turn_id: object) -> int | None:
-    pass
     parts = str(turn_id).rsplit("#", 1)
     if len(parts) != 2 or not parts[1].isdigit():
         return None
@@ -192,7 +175,6 @@ def _rating_index(turn_id: object) -> int | None:
 
 
 def _trim_rating(rating: object) -> dict[str, Any] | None:
-    pass
     if not isinstance(rating, dict):
         return None
     try:
@@ -208,7 +190,6 @@ def _trim_rating(rating: object) -> dict[str, Any] | None:
 
 
 def _deception_bucket(score: int) -> str:
-    pass
     if score >= DECEPTIVE_AT:
         return "deceptive"
     if score <= TRUTHFUL_AT:
@@ -216,13 +197,9 @@ def _deception_bucket(score: int) -> str:
     return "ambiguous"
 
 
-                                                                               
-                                                    
-                                                                               
 def _extract_holistic(
     source: Path, ratings_path: Path, limit: int | None
 ) -> tuple[dict[str, dict[str, Any]], dict[str, list[dict[str, Any]]]]:
-    pass
     games = _load_v1_games(source, limit)
     if not games:
         logger.warning(
@@ -244,7 +221,6 @@ def _extract_holistic(
 
 
 def _pluck_holistic_row(row: dict[str, Any]) -> dict[str, Any]:
-    pass
     interaction = row.get("interaction") or {}
     response = interaction.get("response") or {}
     player = row.get("player") or {}
@@ -258,21 +234,15 @@ def _pluck_holistic_row(row: dict[str, Any]) -> dict[str, Any]:
         "location": player.get("location", ""),
         "action": action,
         "recovered": recovered,
-                                                                                 
-                                                                               
-                                                      
         "thought": _as_text(response.get("Thinking Process")),
         "rating": _trim_rating(row.get("holistic_rating")),
     }
 
 
-                                                                            
-                                                                          
 _TEXT_KEYS = ("thought", "text", "action", "speech")
 
 
 def _as_text(value: object) -> str:
-    pass
     if isinstance(value, str):
         return value.strip()
     if isinstance(value, dict):
@@ -285,7 +255,6 @@ def _as_text(value: object) -> str:
 
 
 def _replay_holistic(rows: list[dict[str, Any]], meta: dict[str, Any]) -> list[dict[str, Any]]:
-    pass
     positions = {p["name"]: STARTING_ROOM for p in meta["players"]}
     alive = {p["name"]: True for p in meta["players"]}
     bodies: dict[str, str] = {}
@@ -294,7 +263,7 @@ def _replay_holistic(rows: list[dict[str, Any]], meta: dict[str, Any]) -> list[d
     for row in rows:
         actor = row["actor"]
         if row["location"]:
-            positions[actor] = row["location"]                                     
+            positions[actor] = row["location"]
         kind, fields = parse_action(row["action"])
         speech = apply_board_event(kind, fields, actor, positions, alive, bodies)
         out.append(_trim_holistic_turn(row, kind, speech, positions, alive, bodies))
@@ -302,7 +271,6 @@ def _replay_holistic(rows: list[dict[str, Any]], meta: dict[str, Any]) -> list[d
 
 
 def _load_v1_games(source: Path, limit: int | None) -> dict[str, dict[str, Any]]:
-    pass
     path = source / SUMMARY_FILE
     if not path.exists():
         return {}
@@ -338,11 +306,10 @@ def _trim_holistic_turn(
     alive: dict[str, bool],
     bodies: dict[str, str],
 ) -> dict[str, Any]:
-    pass
     rating = row["rating"]
     out: dict[str, Any] = {
         "step": row["step"],
-        "t": row["step"],                                                       
+        "t": row["step"],
         "phase": row["phase"],
         "actor": row["actor"],
         "role": row["role"],
@@ -355,8 +322,6 @@ def _trim_holistic_turn(
         "thought": row["thought"],
     }
     if row["recovered"]:
-                                                                              
-                                                             
         out["recovered"] = True
     if speech:
         out["speech"] = speech
@@ -366,11 +331,7 @@ def _trim_holistic_turn(
     return out
 
 
-                                                                               
-                     
-                                                                               
 def _load_games(source: Path, limit: int | None) -> dict[str, dict[str, Any]]:
-    pass
     games: dict[str, dict[str, Any]] = {}
     path = source / GAMES_FILE
     if not path.exists():
@@ -399,7 +360,6 @@ def _load_games(source: Path, limit: int | None) -> dict[str, dict[str, Any]]:
 
 
 def _load_world_states(source: Path, wanted: set[str]) -> dict[str, dict[int, dict[str, Any]]]:
-    pass
     out: dict[str, dict[int, dict[str, Any]]] = {}
     path = source / WORLD_STATES_FILE
     if not path.exists():
@@ -427,7 +387,6 @@ def _load_turns(
     positions: dict[str, dict[int, dict[str, Any]]],
     ratings: dict[int, dict[str, Any]] | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
-    pass
     ratings = ratings or {}
     out: dict[str, list[dict[str, Any]]] = {}
     for index, line in enumerate(_lines(path)):
@@ -445,7 +404,6 @@ def _load_turns(
 
 
 def _trim_turn(turn: dict[str, Any], board: dict[str, Any]) -> dict[str, Any]:
-    pass
     output = turn.get("model_output") or {}
     annotations = turn.get("annotations") or {}
     action = output.get("action") or {}
@@ -480,7 +438,6 @@ def _trim_turn(turn: dict[str, Any], board: dict[str, Any]) -> dict[str, Any]:
 
 
 def _trim_claim(claim: dict[str, Any]) -> dict[str, Any]:
-    pass
     return {
         "type": claim.get("claim_type", ""),
         "span": claim.get("text_span", ""),
@@ -495,11 +452,7 @@ def _trim_claim(claim: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-                                                                               
-                
-                                                                               
 def _lines(path: Path):
-    pass
     with path.open(encoding="utf-8") as handle:
         for line in handle:
             if line.strip():
@@ -507,25 +460,21 @@ def _lines(path: Path):
 
 
 def _write_js(path: Path, callback: str, payload: object) -> None:
-    pass
     body = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
     path.write_text(f"window.{callback}({body});\n", encoding="utf-8")
 
 
 def _slug(label: str) -> str:
-    pass
     return "".join(c if c.isalnum() else "-" for c in label.lower()).strip("-")
 
 
 def _player_number(name: str) -> str:
-    pass
     head = name.split(":", 1)[0]
     digits = "".join(c for c in head if c.isdigit())
     return digits or "?"
 
 
 def _render_index(root_name: str) -> str:
-    pass
     rooms = [{"name": room, "row": rc[0], "col": rc[1]} for room, rc in ROOM_GRID.items()]
     return _INDEX.substitute(
         EXPERIMENT=_escape(root_name),
@@ -541,12 +490,10 @@ def _render_index(root_name: str) -> str:
 
 
 def _palette_css(palette: list[str]) -> str:
-    pass
     return "\n  ".join(f"--p{i + 1}: {hex_code};" for i, hex_code in enumerate(palette))
 
 
 def _escape(text: str) -> str:
-    pass
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
@@ -570,22 +517,22 @@ _INDEX = Template(
 <style>
 
 :root, :root[data-theme="light"] {
-  --paper:      #edeae6;   
-  --chart:      #f4e6e2;   
+  --paper:      #edeae6;
+  --chart:      #f4e6e2;
   --rule:       #d8cfc9;
   --rule-soft:  #e5ddd8;
-  --ink:        #211b20;   
+  --ink:        #211b20;
   --ink-soft:   #6b6068;
   --ink-faint:  #9a8f96;
-  --lie:        #c4123f;   
-  --truth:      #0e6b63;   
+  --lie:        #c4123f;
+  --truth:      #0e6b63;
   --hedge:      #8a7f86;
   --panel:      #f6f4f1;
-  --grid:       #e3c9c3;   
+  --grid:       #e3c9c3;
   --axis:       #cbaaa3;
-  --band:       #ead6d1;   
+  --band:       #ead6d1;
   --tick:       #b9968f;
-  
+
   $PALETTE_LIGHT
   color-scheme: light;
 }
@@ -606,7 +553,7 @@ _INDEX = Template(
   --axis:       #573c47;
   --band:       #31212a;
   --tick:       #6d4c58;
-  
+
   $PALETTE_DARK
   color-scheme: dark;
 }
@@ -1143,7 +1090,7 @@ window.__AMONGUS_GAME__  = function (payload) { GAME = payload; onGameLoaded(); 
 var BEAN = "M22 44C22 18 38 8 54 8C70 8 82 20 82 44L82 82Q82 88 76 88L62 88Q58 88 58 84"
          + "L58 78Q58 73 52 73Q46 73 46 78L46 84Q46 88 42 88L28 88Q22 88 22 82Z";
 function crewmate(hex, imp) {
-  
+
   return '<svg class="bean' + (imp ? ' imp' : '') + '" viewBox="0 4 88 88" aria-hidden="true">'
     + '<rect class="bpack" x="3" y="41" width="20" height="37" rx="10" fill="' + hex + '"/>'
     + '<rect x="3" y="41" width="20" height="37" rx="10" fill="#000" opacity=".3"/>'
@@ -1179,7 +1126,7 @@ function buildDatasets() {
   INDEX.datasets.forEach(function (d, i) {
     var o = document.createElement("option");
     o.value = d.slug;
-    
+
     o.textContent = d.name + "  ·  " + d.games.length + " games  ·  " + d.turns + " turns"
       + (d.kind === "holistic" ? "  ·  GPT ratings" : "  ·  grounded labels");
     sel.appendChild(o);
@@ -1230,7 +1177,7 @@ function onGameLoaded() {
 function renderTraceKey() {
   var label = document.getElementById("traceLabel");
   var key = document.getElementById("traceKey");
-  
+
   document.getElementById("nextLie").textContent =
     isHolistic() ? "Next deception " + DECEPTIVE_AT + "+" : "Next lie";
   if (!isHolistic()) {
@@ -1288,7 +1235,7 @@ function drawTrace() {
   var step = TRACE_W / n;
   var parts = [];
 
-  
+
   var runStart = -1;
   for (var i = 0; i <= n; i++) {
     var isMeeting = i < n && /meeting/i.test(GAME.turns[i].phase || "");
@@ -1299,14 +1246,14 @@ function drawTrace() {
       runStart = -1;
     }
   }
-  
+
   for (var g = 1; g < 6; g++) {
     var y = 6 + (TRACE_H - 20) * g / 6;
     parts.push('<line class="grid" x1="0" y1="' + y + '" x2="' + TRACE_W + '" y2="' + y + '"/>');
   }
   parts.push('<line class="axis" x1="0" y1="' + MID + '" x2="' + TRACE_W + '" y2="' + MID + '"/>');
 
-  
+
   GAME.turns.forEach(function (t, i) {
     var x = i * step + step / 2;
     if (isHolistic()) {
@@ -1332,7 +1279,7 @@ function drawTrace() {
       var mid = (t.deception === "truthful") ? false : true;
       var h = (t.deception === "deceptive") ? 40 : (t.deception === "truthful" ? 34 : 16);
       var y2 = up ? MID - h : MID + h;
-      if (!up && mid) y2 = MID - h;           
+      if (!up && mid) y2 = MID - h;
       parts.push('<line class="bar" x1="' + x + '" y1="' + MID + '" x2="' + x + '" y2="' + y2
         + '" stroke="' + statusColor(t.deception) + '"/>');
     }
@@ -1402,7 +1349,7 @@ function drawNow(turn) {
   if (turn.action) {
     line.appendChild(el("span", null, turn.action));
   } else {
-    
+
     line.appendChild(el("span", "norec", "no action recorded"));
   }
   if (p.role === "Impostor") line.style.color = "var(--lie)";
@@ -1423,7 +1370,7 @@ function drawNow(turn) {
     det.appendChild(el("p", null, turn.thought));
     now.appendChild(det);
   }
-  
+
   if (!turn.speech || isHolistic()) return;
 
   var v = el("div", "verdict v-" + (turn.deception || "not_applicable"),
@@ -1478,7 +1425,7 @@ function drawRating(now, turn) {
   SCORES.forEach(function (s) {
     var name = s[0], v = r[s[1]], honesty = s[2];
     grid.appendChild(el("span", "mn", name));
-    
+
     var cls = "meter";
     if (honesty) cls += v >= DECEPTIVE_AT ? " m-lie" : (v <= TRUTHFUL_AT ? " m-truth" : "");
     var bar = el("span", cls);
@@ -1498,7 +1445,7 @@ function buildTurnList() {
   var list = document.getElementById("turns");
   list.innerHTML = "";
   GAME.turns.forEach(function (t, i) {
-    
+
     var marked = t.deception && (t.speech || isHolistic());
     var row = el("button", "turn" + (marked ? " d-" + t.deception : ""));
     row.type = "button";
@@ -1506,7 +1453,7 @@ function buildTurnList() {
     row.appendChild(el("span", "st", String(t.step)));
     row.appendChild(el("span", "mk"));
     var body = el("span");
-    
+
     var bits = [];
     if (marked && !isHolistic()) bits.push((t.deception || "").replace(/_/g, " "));
     if (t.rating) bits.push("gpt " + t.rating.dc + "/10");
@@ -1585,7 +1532,6 @@ function metricName(key) {
   for (var i = 0; i < METRICS.length; i++) if (METRICS[i][0] === key) return METRICS[i][1];
   return key;
 }
-
 
 
 function tipRows(pairs) {
@@ -1703,7 +1649,7 @@ function initTraining(runs) {
     TRAIN_OFF,
     drawTraining
   );
-  
+
   var key = document.getElementById("metricLegend");
   key.innerHTML = "";
   METRICS.forEach(function (m) {
@@ -1767,7 +1713,7 @@ function drawLayerChart() {
   if (hi <= 0) { host.innerHTML = '<div class="empty">No scores to draw.</div>'; return; }
   var y0 = 0, y1 = 1;
   if (LAYER_ZOOM === "fit") {
-    
+
     y0 = Math.max(0, lo - 0.02);
     y1 = Math.min(1, hi + 0.02);
   }
@@ -1783,7 +1729,7 @@ function drawLayerChart() {
       + (LML + pw) + '" y2="' + sy(v).toFixed(1) + '"/>');
     out.push(txt(LML - 8, sy(v) + 3.5, "ax", fmt(v, 2), ' text-anchor="end"'));
   });
-  
+
   if (0.5 >= y0 && 0.5 <= y1) {
     out.push('<line class="chance" x1="' + LML + '" y1="' + sy(0.5) + '" x2="' + (LML + pw)
       + '" y2="' + sy(0.5) + '"/>');
@@ -1812,7 +1758,7 @@ function drawLayerChart() {
       out.push('<polyline class="curve m-' + k + '" points="' + pts.join(" ")
         + '" stroke="' + pcolor(r.name) + '"/>');
     });
-    
+
     var idx = r.layers.indexOf(r.best_layer);
     if (idx >= 0) {
       keys.forEach(function (k) {
@@ -1925,7 +1871,7 @@ function drawBestChart() {
   out.push("</svg>");
   host.innerHTML = out.join("");
 
-  
+
   host.onclick = function (ev) {
     var name = ev.target.getAttribute && ev.target.getAttribute("data-probe");
     if (!name) return;
@@ -2077,7 +2023,7 @@ function drawSuite() {
   var datasets = SUITE.datasets;
   if (!probes.length) { host.innerHTML = '<div class="empty">No probe selected.</div>'; return; }
 
-  
+
   var bw = 22, groupPad = 26;
   tipReset("suite");
   var groupW = Math.max(72, probes.length * bw + groupPad);
@@ -2130,7 +2076,7 @@ function drawSuite() {
             ["Spread (sd)", row[SUITE_METRIC + "_std"] === null
               || row[SUITE_METRIC + "_std"] === undefined
               ? null : "±" + fmt(row[SUITE_METRIC + "_std"]) + " over " + row.seeds + " seeds"],
-            
+
             SUITE_METRIC === "auroc" ? null : ["AUROC", fmt(row.auroc)],
             SUITE_METRIC === "accuracy" ? null
               : ["Accuracy", fmt(row.accuracy) + " (majority " + fmt(row.baseline_accuracy) + ")"],
@@ -2155,7 +2101,7 @@ function drawSuite() {
           out.push('<line class="errbar" x1="' + (cx - 3) + '" y1="' + lo.toFixed(1) + '" x2="'
             + (cx + 3) + '" y2="' + lo.toFixed(1) + '"/>');
         }
-        
+
         out.push(txt(x + bw / 2, sy(value) - 4, "vlabel", fmt(value, 2),
           ' text-anchor="middle"'));
       });
@@ -2348,7 +2294,6 @@ function buildContraTable() {
 }
 
 
-
 function buildPersonaList() {
   var out = [];
   CONTRA.personas.forEach(function (p, i) {
@@ -2470,7 +2415,7 @@ function setView(name) {
   document.getElementById("pickDataset").hidden = !review;
   document.getElementById("pickGame").hidden = !review;
   tipHide();
-  
+
   if (name === "suite" && SUITE) drawSuite();
   if (name === "training" && PROBES && PROBES.training.length) drawTraining();
 }
@@ -2492,7 +2437,7 @@ document.getElementById("play").onclick = togglePlay;
 document.getElementById("nextLie").onclick = nextLie;
 document.addEventListener("keydown", function (e) {
   if (e.target.tagName === "SELECT") return;
-  
+
   if (VIEW !== "review") return;
   if (e.key === "ArrowLeft") setTurn(cur - 1);
   else if (e.key === "ArrowRight") setTurn(cur + 1);

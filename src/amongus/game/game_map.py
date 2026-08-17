@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 from collections import deque
@@ -20,8 +18,7 @@ REACTOR = "Reactor"
 UPPER_ENGINE = "Upper Engine"
 MEDBAY = "Medbay"
 
-                                                                               
-                        
+
 _WALK_EDGES: tuple[tuple[str, str], ...] = (
     (CAFETERIA, WEAPONS),
     (CAFETERIA, ADMIN),
@@ -49,8 +46,7 @@ _WALK_EDGES: tuple[tuple[str, str], ...] = (
     (MEDBAY, ELECTRICAL),
 )
 
-                                                                                
-                     
+
 _VENT_EDGES: tuple[tuple[str, str], ...] = (
     (CAFETERIA, ADMIN),
     (WEAPONS, NAVIGATION),
@@ -62,13 +58,12 @@ _VENT_EDGES: tuple[tuple[str, str], ...] = (
     (REACTOR, UPPER_ENGINE),
 )
 
-                                                                             
+
 EMERGENCY_BUTTON_ROOM = CAFETERIA
 SECURITY_CAMERA_ROOM = SECURITY
 
 
 def _symmetric(edges: tuple[tuple[str, str], ...]) -> dict[str, frozenset[str]]:
-    pass
     adj: dict[str, set[str]] = {}
     for a, b in edges:
         adj.setdefault(a, set()).add(b)
@@ -78,8 +73,6 @@ def _symmetric(edges: tuple[tuple[str, str], ...]) -> dict[str, frozenset[str]]:
 
 @dataclass(frozen=True)
 class GameMap:
-    pass
-
     rooms: tuple[str, ...]
     walk_adjacency: dict[str, frozenset[str]] = field(default_factory=dict)
     vent_adjacency: dict[str, frozenset[str]] = field(default_factory=dict)
@@ -87,19 +80,15 @@ class GameMap:
     security_camera_room: str = SECURITY_CAMERA_ROOM
 
     def neighbours(self, room: str) -> frozenset[str]:
-        pass
         return self.walk_adjacency.get(room, frozenset())
 
     def vents(self, room: str) -> frozenset[str]:
-        pass
         return self.vent_adjacency.get(room, frozenset())
 
     def has_vent(self, room: str) -> bool:
-        pass
         return bool(self.vent_adjacency.get(room))
 
     def shortest_walk_path(self, start: str, goal: str) -> list[str]:
-        pass
         if start == goal:
             return [start]
         queue: deque[str] = deque([start])
@@ -117,7 +106,6 @@ class GameMap:
 
     @staticmethod
     def _reconstruct(came_from: dict[str, str], start: str, goal: str) -> list[str]:
-        pass
         path = [goal]
         while path[-1] != start:
             path.append(came_from[path[-1]])
@@ -126,7 +114,6 @@ class GameMap:
 
 
 def build_skeld() -> GameMap:
-    pass
     rooms = (
         CAFETERIA,
         WEAPONS,
@@ -150,7 +137,6 @@ def build_skeld() -> GameMap:
     )
 
 
-                                                                                  
 SKELD_MAP_DESCRIPTION = """Map Configuration of the Skeld:
 Rooms and Features
 Cafeteria: Vent to Admin, Special (Emergency Button).

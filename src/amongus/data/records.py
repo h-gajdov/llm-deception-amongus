@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import json
@@ -9,8 +7,6 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class PlayerLog(BaseModel):
-    pass
-
     model_config = ConfigDict(extra="allow")
 
     name: str
@@ -21,8 +17,6 @@ class PlayerLog(BaseModel):
 
 
 class Interaction(BaseModel):
-    pass
-
     model_config = ConfigDict(extra="allow")
 
     system_prompt: str = ""
@@ -33,7 +27,6 @@ class Interaction(BaseModel):
     @field_validator("prompt", "response", mode="before")
     @classmethod
     def _stringify_values(cls, value: object) -> object:
-        pass
         if not isinstance(value, dict):
             return value
         return {
@@ -43,8 +36,6 @@ class Interaction(BaseModel):
 
 
 class StepLog(BaseModel):
-    pass
-
     model_config = ConfigDict(extra="allow")
 
     game_index: str
@@ -54,15 +45,12 @@ class StepLog(BaseModel):
     interaction: Interaction
 
     def compact(self) -> StepLog:
-        pass
         data = self.model_dump()
         data["interaction"]["system_prompt"] = ""
         return StepLog.model_validate(data)
 
 
 class PlayerSummary(BaseModel):
-    pass
-
     model_config = ConfigDict(extra="allow")
 
     name: str
@@ -73,19 +61,13 @@ class PlayerSummary(BaseModel):
 
 
 class GameSummary(BaseModel):
-    pass
-
     model_config = ConfigDict(extra="allow")
 
-                                                                                 
-                                                                              
-                        
     config: dict[str, Any] = Field(default_factory=dict)
     winner: int
     winner_reason: str
 
     def players(self) -> dict[str, PlayerSummary]:
-        pass
         extras = self.__pydantic_extra__ or {}
         out: dict[str, PlayerSummary] = {}
         for key, value in extras.items():

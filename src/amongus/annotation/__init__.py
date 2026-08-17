@@ -1,5 +1,3 @@
-
-
 from .schema import (
     Claim,
     ClaimType,

@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -16,7 +14,6 @@ MIGRATION_WARNING = "migrated_from_v1"
 
 
 def migrate_step_log(step: StepLog) -> TurnRecordModel:
-    pass
     prompt = step.interaction.prompt
     response = step.interaction.response
     action_text = response.get("Action", "")
@@ -70,7 +67,6 @@ def migrate_step_log(step: StepLog) -> TurnRecordModel:
 
 
 def _speech_of(action_text: str) -> str | None:
-    pass
     stripped = action_text.strip()
     if not stripped.upper().startswith("SPEAK"):
         return None
@@ -79,7 +75,6 @@ def _speech_of(action_text: str) -> str | None:
 
 
 def migrate_directory(source: str | Path, dest: str | Path) -> Path:
-    pass
     source_dir, dest_dir = Path(source), Path(dest)
     logs = source_dir / "agent-logs.json"
     if not logs.exists():

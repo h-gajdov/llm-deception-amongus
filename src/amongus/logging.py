@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import sys
@@ -23,7 +21,6 @@ def configure_logging(
     log_file: Path | None = None,
     serialize: bool = False,
 ) -> None:
-    pass
     global _configured
     logger.remove()
     logger.add(sys.stderr, level=level, format=_CONSOLE_FORMAT, enqueue=True)
@@ -43,7 +40,6 @@ def configure_logging(
 
 
 def get_logger():
-    pass
     if not _configured:
         configure_logging()
     return logger

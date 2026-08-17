@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import re
@@ -7,8 +5,7 @@ from dataclasses import dataclass
 
 from .schema import Claim, ClaimType
 
-                                                                                
-                                     
+
 _TIME_REFERENCES: tuple[tuple[str, str], ...] = (
     (r"\bjust now\b|\bright now\b|\bcurrently\b", "current"),
     (r"\bearlier\b|\blast (?:round|meeting|turn)\b|\bbefore\b", "earlier"),
@@ -20,9 +17,7 @@ _TIME_REFERENCES: tuple[tuple[str, str], ...] = (
 )
 DEFAULT_TIME_REFERENCE = "previous_task_phase"
 
-                                                                               
-                                                                                
-                                                           
+
 _QUALIFIERS: tuple[tuple[str, str], ...] = (
     (r"\bthe (?:whole|entire) (?:time|game|round|meeting)\b", "the entire time"),
     (r"\bnever\b", "never"),
@@ -35,8 +30,7 @@ _QUALIFIERS: tuple[tuple[str, str], ...] = (
     (r"\bthe whole time\b", "the whole time"),
 )
 
-                                                                           
-                                                                 
+
 _CLAUSE_SPLIT_RE = re.compile(
     r"[;.!?]+\s+|\n+|,\s*(?:and|but|so|then|although|though|however|while)?\s*"
     r"|\s+(?:and|but|so|then|although|though|however|while)\s+",
@@ -46,14 +40,11 @@ _CLAUSE_SPLIT_RE = re.compile(
 
 @dataclass(frozen=True)
 class Gazetteer:
-    pass
-
     players: dict[str, str]
     rooms: dict[str, str]
 
     @staticmethod
     def build(player_names: list[str], rooms: list[str]) -> Gazetteer:
-        pass
         players: dict[str, str] = {}
         for name in player_names:
             players[name.lower()] = name
@@ -65,26 +56,21 @@ class Gazetteer:
         return Gazetteer(players=players, rooms={r.lower(): r for r in rooms})
 
     def player_pattern(self) -> str:
-        pass
         forms = sorted(self.players, key=len, reverse=True)
         return "(?:" + "|".join(re.escape(f) for f in forms) + ")"
 
     def room_pattern(self) -> str:
-        pass
         forms = sorted(self.rooms, key=len, reverse=True)
         return "(?:" + "|".join(re.escape(f) for f in forms) + ")"
 
     def player(self, surface: str) -> str | None:
-        pass
         return self.players.get(surface.strip().lower().rstrip(".,!?'s"))
 
     def room(self, surface: str) -> str | None:
-        pass
         return self.rooms.get(surface.strip().lower().rstrip(".,!?"))
 
 
 def time_reference(utterance: str) -> str:
-    pass
     lowered = utterance.lower()
     for pattern, label in _TIME_REFERENCES:
         if re.search(pattern, lowered):
@@ -93,14 +79,12 @@ def time_reference(utterance: str) -> str:
 
 
 def qualifiers(text: str) -> list[str]:
-    pass
     lowered = text.lower()
     found = [label for pattern, label in _QUALIFIERS if re.search(pattern, lowered)]
     return list(dict.fromkeys(found))
 
 
 def extract_claims(utterance: str, speaker: str, gazetteer: Gazetteer) -> list[Claim]:
-    pass
     text = utterance.strip()
     if not text:
         return []
@@ -130,19 +114,16 @@ def extract_claims(utterance: str, speaker: str, gazetteer: Gazetteer) -> list[C
 
 
 def _sentences(text: str) -> list[str]:
-    pass
     parts = re.split(r"(?<=[.!?;])\s+|\n+", text)
     return [p.strip() for p in parts if p.strip()]
 
 
 def _clauses(sentence: str) -> list[str]:
-    pass
     parts = [p.strip() for p in _CLAUSE_SPLIT_RE.split(sentence) if p and p.strip()]
     return [p for p in parts if p != sentence]
 
 
 def _claims_in_sentence(sentence: str, speaker: str, gaz: Gazetteer, when: str) -> list[Claim]:
-    pass
     out: list[Claim] = []
     seen: set[tuple[str, ...]] = set()
     for fragment in [*_clauses(sentence), sentence]:
@@ -160,7 +141,6 @@ def _claims_in_sentence(sentence: str, speaker: str, gaz: Gazetteer, when: str) 
 
 
 def _resolve_pronoun_subjects(claims: list[Claim], speaker: str) -> None:
-    pass
     antecedent: str | None = None
     for claim in claims:
         fields = claim.normalized_claim
@@ -178,13 +158,11 @@ def _resolve_pronoun_subjects(claims: list[Claim], speaker: str) -> None:
 
 
 def _time_for(fragment: str, fallback: str) -> str:
-    pass
     found = time_reference(fragment)
     return found if found != DEFAULT_TIME_REFERENCE else fallback
 
 
 def _claim_key(claim: Claim) -> tuple[str, ...]:
-    pass
     fields = claim.normalized_claim
     return (
         claim.claim_type.value,
@@ -205,13 +183,6 @@ def _claim_key(claim: Claim) -> tuple[str, ...]:
     )
 
 
-                                                                               
-                                                                
-                                                                               
-                                                                              
-                                                                              
-                                                                                
-                                         
 _NEGATED_SIGHTING_RE = re.compile(
     r"\b(?:did\s*n[o']?t|didnt|do\s*n[o']?t|dont|have\s*n[o']?t|havent|never|no)\s+"
     r"(?:ever\s+)?(?:see|seen|saw|notice|spot|spotted|witness)\b",
@@ -220,12 +191,10 @@ _NEGATED_SIGHTING_RE = re.compile(
 
 
 def _negated_before(sentence: str, index: int) -> bool:
-    pass
     return bool(_NEGATED_SIGHTING_RE.search(sentence[:index]))
 
 
 def _kill_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) -> list[Claim]:
-    pass
     player = gaz.player_pattern()
     pattern = re.compile(
         rf"(?P<saw>i\s+(?:saw|watched)\s+)?(?P<killer>{player})\s+"
@@ -258,7 +227,6 @@ def _kill_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) -> list
 
 
 def _vent_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) -> list[Claim]:
-    pass
     player = gaz.player_pattern()
     pattern = re.compile(
         rf"(?P<saw>i\s+(?:saw|watched)\s+)?(?P<who>{player})\s+"
@@ -287,9 +255,6 @@ def _vent_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) -> list
     return out
 
 
-                                                                                
-                                                                                
-                                                     
 _REPORTING_VERB_RE = re.compile(
     r"\bi\s+(?:saw|seen|watched|spotted|heard|think|thought|believe|suspect|know)\b",
     re.IGNORECASE,
@@ -297,7 +262,6 @@ _REPORTING_VERB_RE = re.compile(
 
 
 def _self_location_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) -> list[Claim]:
-    pass
     if _REPORTING_VERB_RE.search(sentence):
         return []
     pattern = re.compile(
@@ -329,7 +293,6 @@ def _self_location_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str
 def _negative_self_location_claims(
     sentence: str, speaker: str, gaz: Gazetteer, when: str
 ) -> list[Claim]:
-    pass
     pattern = re.compile(
         r"\bi\s+(?:was\s*n[o']?t|wasnt|am\s+not|'m\s+not|have\s*n[o']?t\s+been|havent\s+been"
         r"|had\s*n[o']?t\s+been|did\s*n[o']?t\s+go|didnt\s+go|never\s+(?:was|went|been|entered))"
@@ -358,7 +321,6 @@ def _negative_self_location_claims(
 
 
 def _task_observation_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) -> list[Claim]:
-    pass
     player = gaz.player_pattern()
     pattern = re.compile(
         r"\bi\s+(?:saw|see|watched|spotted|observed)\s+"
@@ -395,7 +357,6 @@ def _task_observation_claims(sentence: str, speaker: str, gaz: Gazetteer, when: 
 
 
 def _other_location_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) -> list[Claim]:
-    pass
     player = gaz.player_pattern()
     pattern = re.compile(
         rf"(?P<saw>i\s+(?:saw|spotted|watched)\s+)?(?P<who>{player})\s+"
@@ -430,7 +391,6 @@ def _other_location_claims(sentence: str, speaker: str, gaz: Gazetteer, when: st
 
 
 def _body_found_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) -> list[Claim]:
-    pass
     player = gaz.player_pattern()
     pattern = re.compile(
         rf"(?:i\s+(?:found|saw|discovered)\s+)?(?P<who>{player})(?:'s\s+body)?\s+"
@@ -460,7 +420,6 @@ def _body_found_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) -
 
 
 def _self_role_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) -> list[Claim]:
-    pass
     del gaz
     pattern = re.compile(
         r"\bi(?:'m| am|m)\s+(?P<neg>not\s+)?(?:the\s+|an\s+|a\s+)?(?P<role>impostor|crewmate)\b",
@@ -470,7 +429,7 @@ def _self_role_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) ->
     for match in pattern.finditer(sentence):
         claimed_impostor = match.group("role").lower() == "impostor"
         negated = bool(match.group("neg"))
-                                                                              
+
         asserts_crewmate = (claimed_impostor and negated) or (not claimed_impostor and not negated)
         out.append(
             Claim(
@@ -488,7 +447,6 @@ def _self_role_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) ->
 
 
 def _accusation_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) -> list[Claim]:
-    pass
     player = gaz.player_pattern()
     out: list[Claim] = []
     is_impostor = re.compile(
@@ -534,7 +492,6 @@ def _accusation_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) -
 
 
 def _defence_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) -> list[Claim]:
-    pass
     player = gaz.player_pattern()
     out: list[Claim] = []
     innocent = re.compile(
@@ -579,7 +536,6 @@ def _defence_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) -> l
 
 
 def _denial_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) -> list[Claim]:
-    pass
     del gaz
     pattern = re.compile(
         r"\bi\s+(?:did\s*n[o']?t|didnt|do\s*n[o']?t|dont|never|have\s*n[o']?t|havent|"
@@ -606,7 +562,6 @@ def _denial_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) -> li
 
 
 def _task_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) -> list[Claim]:
-    pass
     pattern = re.compile(
         rf"\bi\s+(?:just\s+)?(?:completed|finished|did|was\s+doing|have\s+done|"
         rf"was\s+working\s+on)\s+(?:my\s+|a\s+|the\s+)?tasks?"
@@ -631,7 +586,6 @@ def _task_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) -> list
 
 
 def _ignorance_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) -> list[Claim]:
-    pass
     del gaz
     pattern = re.compile(
         r"\bi\s+(?:did\s*n[o']?t|didnt|have\s*n[o']?t|havent|don'?t|never)\s+(?:ever\s+)?"
@@ -656,7 +610,6 @@ def _ignorance_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) ->
 def _negative_observation_claims(
     sentence: str, speaker: str, gaz: Gazetteer, when: str
 ) -> list[Claim]:
-    pass
     player = gaz.player_pattern()
     pattern = re.compile(
         r"\bi\s+(?:did\s*n[o']?t|didnt|do\s*n[o']?t|dont|have\s*n[o']?t|havent|never)\s+"
@@ -687,7 +640,6 @@ def _negative_observation_claims(
 
 
 def _knowledge_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) -> list[Claim]:
-    pass
     del gaz
     pattern = re.compile(
         r"\bi\s+(?:do\s*n[o']?t|dont|did\s*n[o']?t|didnt|can\s*n[o']?t|cant)\s+"
@@ -711,7 +663,6 @@ def _knowledge_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) ->
 
 
 def _solitude_claims(sentence: str, speaker: str, gaz: Gazetteer, when: str) -> list[Claim]:
-    pass
     pattern = re.compile(
         r"\b(?:i\s+(?:was|am|'m|have\s+been|had\s+been|stayed|worked)\s+"
         r"(?:all\s+|completely\s+|totally\s+|just\s+)?(?:alone|by\s+myself|on\s+my\s+own)"

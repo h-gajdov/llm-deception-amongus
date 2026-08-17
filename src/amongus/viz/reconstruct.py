@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import re
@@ -13,17 +11,10 @@ from .layout import color_of
 
 STARTING_ROOM = "Cafeteria"
 
-                                                                               
-                                                                                
-                                                                                 
-                                                                 
+
 _LIST_MARKER_RE = re.compile(r"^\s*(?:[-*•]\s*)?(?:\d+\s*[.)]\s*)?")
 
-                                                                  
-                                                                        
-                                                                              
-                                                                             
-                                                    
+
 _ACTION_TAG_RE = re.compile(r"\[\s*Action\s*\]\s*(.+?)\s*$", re.IGNORECASE | re.DOTALL)
 
 _MOVE_RE = re.compile(r"^\s*(?:MOVE|VENT)\s+from\s+(.+?)\s+to\s+(.+?)\s*$", re.IGNORECASE)
@@ -33,8 +24,6 @@ _SPEAK_RE = re.compile(r"^\s*SPEAK\s*:?\s*(.*)$", re.IGNORECASE | re.DOTALL)
 
 
 class EventKind(str, Enum):
-    pass
-
     MOVE = "move"
     VENT = "vent"
     KILL = "kill"
@@ -48,8 +37,6 @@ class EventKind(str, Enum):
 
 @dataclass
 class PlayerInfo:
-    pass
-
     name: str
     color: str
     role: str
@@ -57,8 +44,6 @@ class PlayerInfo:
 
 @dataclass
 class Frame:
-    pass
-
     step: int
     phase: str
     actor: str
@@ -72,7 +57,6 @@ class Frame:
     bodies: dict[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, object]:
-        pass
         return {
             "step": self.step,
             "phase": self.phase,
@@ -89,7 +73,6 @@ class Frame:
 
 
 def build_roster(steps: list[StepLog]) -> list[PlayerInfo]:
-    pass
     seen: dict[str, PlayerInfo] = {}
     for step in steps:
         name = step.player.name
@@ -100,20 +83,17 @@ def build_roster(steps: list[StepLog]) -> list[PlayerInfo]:
 
 
 def _register_target(step: StepLog, seen: dict[str, PlayerInfo]) -> None:
-    pass
     action, _ = logged_action(step.interaction.response, step.interaction.full_response)
     kind, fields = parse_action(action)
     target = fields.get("target", "")
     if kind not in (EventKind.KILL, EventKind.VOTE):
         return
     if target.startswith("Player ") and target not in seen:
-                                                                                   
         role = "Crewmate" if kind is EventKind.KILL else "Unknown"
         seen[target] = PlayerInfo(name=target, color=color_of(target), role=role)
 
 
 def roster_from_summary(directory: Path, game_index: str) -> list[PlayerInfo] | None:
-    pass
     summary_path = directory / "summary.json"
     if not summary_path.exists():
         return None
@@ -129,13 +109,11 @@ def roster_from_summary(directory: Path, game_index: str) -> list[PlayerInfo] | 
 
 
 def _player_number(name: str) -> int:
-    pass
     match = re.search(r"Player\s+(\d+)", name)
     return int(match.group(1)) if match else 0
 
 
 def parse_action(action: str) -> tuple[EventKind, dict[str, str]]:
-    pass
     text = _LIST_MARKER_RE.sub("", action.strip(), count=1).strip()
     upper = text.upper()
     if move := _MOVE_RE.match(text):
@@ -157,7 +135,6 @@ def parse_action(action: str) -> tuple[EventKind, dict[str, str]]:
 
 
 def _usable_action(value: object) -> str:
-    pass
     if not isinstance(value, str):
         return ""
     text = value.strip()
@@ -165,15 +142,13 @@ def _usable_action(value: object) -> str:
 
 
 def logged_action(response: dict[str, str], full_response: str = "") -> tuple[str, bool]:
-    pass
     action = _usable_action(response.get("Action"))
     if action:
         return action, False
     match = _ACTION_TAG_RE.search(full_response or "")
     if not match:
         return "", False
-                                                                              
-                                                        
+
     for line in match.group(1).splitlines():
         if line.strip():
             return line.strip(), True
@@ -183,7 +158,6 @@ def logged_action(response: dict[str, str], full_response: str = "") -> tuple[st
 def reconstruct_frames(
     steps: list[StepLog], roster: list[PlayerInfo] | None = None
 ) -> tuple[list[Frame], list[PlayerInfo]]:
-    pass
     roster = roster or build_roster(steps)
     positions = {p.name: STARTING_ROOM for p in roster}
     alive = {p.name: True for p in roster}
@@ -192,7 +166,7 @@ def reconstruct_frames(
     frames: list[Frame] = []
     for step in steps:
         actor = step.player.name
-        positions[actor] = step.player.location                                     
+        positions[actor] = step.player.location
         action, _ = logged_action(step.interaction.response, step.interaction.full_response)
         kind, fields = parse_action(action)
         speech = apply_board_event(kind, fields, actor, positions, alive, bodies)
@@ -222,7 +196,6 @@ def apply_board_event(
     alive: dict[str, bool],
     bodies: dict[str, str],
 ) -> str | None:
-    pass
     if kind in (EventKind.MOVE, EventKind.VENT):
         positions[actor] = fields.get("to", positions[actor])
     elif kind is EventKind.KILL:
@@ -231,14 +204,13 @@ def apply_board_event(
             alive[target] = False
             bodies[target] = positions.get(actor, positions.get(target, "?"))
     elif kind in (EventKind.REPORT, EventKind.MEETING):
-        bodies.clear()                                         
+        bodies.clear()
     elif kind is EventKind.SPEAK:
         return fields.get("speech") or None
     return None
 
 
 def _describe(kind: EventKind, fields: dict[str, str], actor: str) -> str:
-    pass
     match kind:
         case EventKind.MOVE:
             return f"{actor} moved from {fields.get('from')} to {fields.get('to')}"
@@ -263,7 +235,6 @@ def _describe(kind: EventKind, fields: dict[str, str], actor: str) -> str:
 def load_game(
     experiment_dir: str | Path, game_index: str | None = None
 ) -> tuple[str, list[StepLog], str | None, list[PlayerInfo] | None]:
-    pass
     directory = Path(experiment_dir)
     logs = directory / "agent-logs.json"
     if not logs.exists():
@@ -288,7 +259,6 @@ def load_game(
 
 
 def _load_winner(directory: Path, game_index: str) -> str | None:
-    pass
     summary_path = directory / "summary.json"
     if not summary_path.exists():
         return None

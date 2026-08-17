@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -12,8 +10,6 @@ from .tasks import TaskSpec
 
 @dataclass(frozen=True)
 class Action:
-    pass
-
     type: ActionType
     source_room: str | None = None
     target_room: str | None = None
@@ -21,7 +17,6 @@ class Action:
     task: TaskSpec | None = None
 
     def render(self) -> str:
-        pass
         match self.type:
             case ActionType.MOVE:
                 return f"MOVE from {self.source_room} to {self.target_room}"
@@ -45,11 +40,10 @@ class Action:
                 return f"VOTE {self.target_name}"
             case ActionType.WAIT:
                 return "WAIT (do nothing this turn)"
-        msg = f"Unhandled action type: {self.type}"                    
+        msg = f"Unhandled action type: {self.type}"
         raise ValueError(msg)
 
     def _task_label(self) -> str:
-        pass
         if self.task is None:
             msg = "Task action requires a task"
             raise ValueError(msg)
@@ -61,7 +55,6 @@ def available_actions(
     player: PlayerState,
     game_map: GameMap,
 ) -> list[Action]:
-    pass
     if state.phase is Phase.MEETING:
         return _meeting_actions(state, player)
     return _task_actions(state, player, game_map)
@@ -72,7 +65,6 @@ def _task_actions(
     player: PlayerState,
     game_map: GameMap,
 ) -> list[Action]:
-    pass
     room = player.location
     actions: list[Action] = []
 
@@ -83,7 +75,6 @@ def _task_actions(
     for dest in sorted(game_map.neighbours(room)):
         actions.append(Action(ActionType.MOVE, source_room=room, target_room=dest))
 
-                                                         
     task_verb = ActionType.FAKE_TASK if player.is_impostor else ActionType.COMPLETE_TASK
     for idx, task in enumerate(player.tasks):
         if task.room == room and idx not in player.completed_tasks:
@@ -112,7 +103,6 @@ def _task_actions(
 
 
 def _meeting_actions(state: GameState, player: PlayerState) -> list[Action]:
-    pass
     if state.meeting_round < state.discussion_rounds:
         return [Action(ActionType.SPEAK)]
 

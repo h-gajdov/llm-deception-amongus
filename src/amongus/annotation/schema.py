@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -7,8 +5,6 @@ from enum import Enum
 
 
 class ClaimType(str, Enum):
-    pass
-
     LOCATION_CLAIM = "location_claim"
     pass
 
@@ -71,8 +67,6 @@ class ClaimType(str, Enum):
 
 
 class SpeakerKnowledge(str, Enum):
-    pass
-
     KNOWS_TRUE = "speaker_knows_true"
     pass
 
@@ -93,8 +87,6 @@ class SpeakerKnowledge(str, Enum):
 
 
 class DeceptionType(str, Enum):
-    pass
-
     FALSE_ALIBI = "false_alibi"
     FALSE_ACCUSATION = "false_accusation"
     DENIAL_OF_TRUE_ACTION = "denial_of_true_action"
@@ -107,8 +99,6 @@ class DeceptionType(str, Enum):
 
 
 class UtteranceTruthStatus(str, Enum):
-    pass
-
     TRUE = "true"
     FALSE = "false"
     MIXED = "mixed"
@@ -117,8 +107,6 @@ class UtteranceTruthStatus(str, Enum):
 
 
 class UtteranceDeceptionStatus(str, Enum):
-    pass
-
     TRUTHFUL = "truthful"
     DECEPTIVE = "deceptive"
     MISTAKEN = "mistaken"
@@ -128,8 +116,6 @@ class UtteranceDeceptionStatus(str, Enum):
 
 
 class SpeechAct(str, Enum):
-    pass
-
     ACCUSE = "accuse"
     DEFEND = "defend"
     CLAIM_ALIBI = "claim_alibi"
@@ -142,8 +128,6 @@ class SpeechAct(str, Enum):
 
 
 class StrategicIntent(str, Enum):
-    pass
-
     SHIFT_SUSPICION = "shift_suspicion"
     ESTABLISH_ALIBI = "establish_alibi"
     PROTECT_ALLY = "protect_ally"
@@ -155,8 +139,6 @@ class StrategicIntent(str, Enum):
 
 
 class KnowledgeBasis(str, Enum):
-    pass
-
     FIRST_PERSON = "first_person"
     pass
 
@@ -171,8 +153,6 @@ class KnowledgeBasis(str, Enum):
 
 
 class IntentEvidence(str, Enum):
-    pass
-
     FIRST_PERSON_KNOWLEDGE = "first_person_knowledge"
     pass
 
@@ -194,8 +174,6 @@ class IntentEvidence(str, Enum):
 
 @dataclass
 class Claim:
-    pass
-
     claim_type: ClaimType
     text_span: str
     normalized_claim: dict[str, object] = field(default_factory=dict)
@@ -211,7 +189,6 @@ class Claim:
     notes: str = ""
 
     def to_dict(self) -> dict[str, object]:
-        pass
         return {
             "claim_type": self.claim_type.value,
             "text_span": self.text_span,
@@ -231,8 +208,6 @@ class Claim:
 
 @dataclass
 class StructuredSpeech:
-    pass
-
     speech_act: SpeechAct = SpeechAct.OTHER
     target_player: str | None = None
     intended_claims: list[dict[str, object]] = field(default_factory=list)
@@ -240,7 +215,6 @@ class StructuredSpeech:
     declared: bool = False
 
     def to_dict(self) -> dict[str, object]:
-        pass
         return {
             "speech_act": self.speech_act.value,
             "target_player": self.target_player,
@@ -252,8 +226,6 @@ class StructuredSpeech:
 
 @dataclass
 class UtteranceAnnotation:
-    pass
-
     speaker_role: str
     utterance: str
     claims: list[Claim] = field(default_factory=list)
@@ -265,7 +237,6 @@ class UtteranceAnnotation:
     notes: str = ""
 
     def to_dict(self) -> dict[str, object]:
-        pass
         return {
             "speaker_role": self.speaker_role,
             "utterance": self.utterance,
@@ -280,7 +251,6 @@ class UtteranceAnnotation:
 
     @staticmethod
     def not_applicable(role: str) -> UtteranceAnnotation:
-        pass
         return UtteranceAnnotation(speaker_role=role, utterance="")
 
 

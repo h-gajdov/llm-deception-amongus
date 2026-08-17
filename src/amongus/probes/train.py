@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import json
@@ -20,7 +18,7 @@ from .activations import (
 from .config import ProbeConfig, ProbeTrainConfig
 from .tracking import ExperimentTracker
 
-if TYPE_CHECKING:                                  
+if TYPE_CHECKING:
     import numpy as np
 
 logger = get_logger()
@@ -28,8 +26,6 @@ logger = get_logger()
 
 @dataclass
 class TorchProbeState:
-    pass
-
     weight: np.ndarray
     bias: float
     mean: np.ndarray
@@ -40,20 +36,16 @@ class TorchProbeState:
         return ((x - self.mean) / self.std) @ self.weight + self.bias
 
     def predict_proba(self, x: np.ndarray) -> np.ndarray:
-        pass
         import numpy as np
 
         return 1.0 / (1.0 + np.exp(-self._logits(x)))
 
     def predict(self, x: np.ndarray) -> np.ndarray:
-        pass
         return (self._logits(x) > 0.0).astype(int)
 
 
 @dataclass
 class LayerMetrics:
-    pass
-
     layer: int
     accuracy: float
     f1: float
@@ -62,8 +54,6 @@ class LayerMetrics:
 
 @dataclass
 class ProbeTrainResult:
-    pass
-
     model_name: str
     pooling: str
     best_layer: int
@@ -77,12 +67,10 @@ class ProbeTrainResult:
     n_test_tokens: int = 0
 
     def best(self) -> LayerMetrics:
-        pass
         return next(m for m in self.layer_metrics if m.layer == self.best_layer)
 
 
 def example_scores(token_scores: np.ndarray, owner: np.ndarray, n_examples: int) -> np.ndarray:
-    pass
     import numpy as np
 
     totals = np.zeros(n_examples, dtype=np.float64)
@@ -95,7 +83,6 @@ def example_scores(token_scores: np.ndarray, owner: np.ndarray, n_examples: int)
 def _standardize(
     x_train: np.ndarray, x_test: np.ndarray, enabled: bool
 ) -> tuple[Any, Any, Any, Any]:
-    pass
     import numpy as np
 
     if not enabled:
@@ -109,12 +96,11 @@ def _standardize(
 
 
 def _score(y_true: Any, y_pred: Any, y_prob: Any) -> tuple[float, float, float | None]:
-    pass
     from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 
     acc = float(accuracy_score(y_true, y_pred))
-                                                                                   
-    f1 = float(f1_score(y_true, y_pred, zero_division=0.0))                          
+
+    f1 = float(f1_score(y_true, y_pred, zero_division=0.0))
     auroc: float | None = None
     if len(set(y_true.tolist())) > 1:
         auroc = float(roc_auc_score(y_true, y_prob))
@@ -134,16 +120,12 @@ def train_probe(
     global_step: int = 0,
     test_owner: np.ndarray | None = None,
 ) -> tuple[TorchProbeState, LayerMetrics, int]:
-    pass
     import numpy as np
     import torch
 
-                                                                                
-                                                                               
     xtr, xte, mean, std = _standardize(x_train, x_test, config.standardize)
     hidden = xtr.shape[1]
-                                                                                 
-                                            
+
     y_test_tokens = y_test if test_owner is None else y_test[test_owner]
 
     torch.manual_seed(seed)
@@ -195,7 +177,6 @@ def train_probe(
 
 
 def _accuracy(linear: Any, x: Any, y: Any) -> float:
-    pass
     import torch
 
     linear.eval()
@@ -213,7 +194,6 @@ def _finalize_probe(
     layer: int,
     test_owner: np.ndarray | None = None,
 ) -> tuple[TorchProbeState, LayerMetrics]:
-    pass
     import numpy as np
     import torch
 
@@ -241,7 +221,6 @@ def train_layer_probes(
     *,
     tracker: ExperimentTracker | None = None,
 ) -> tuple[list[LayerMetrics], dict[int, TorchProbeState]]:
-    pass
     train = _as_tokens(x_train, layers)
     test = _as_tokens(x_test, layers)
     multi = train.max_tokens > 1 or test.max_tokens > 1
@@ -265,8 +244,6 @@ def train_layer_probes(
             config.seed,
             tracker=tracker,
             global_step=global_step,
-                                                                         
-                                                                            
             test_owner=owner_te if multi else None,
         )
         metrics.append(layer_metrics)
@@ -275,19 +252,16 @@ def train_layer_probes(
 
 
 def _as_tokens(x: np.ndarray | TokenActivations, layers: list[int]) -> TokenActivations:
-    pass
     return x if isinstance(x, TokenActivations) else TokenActivations.from_pooled(x, layers)
 
 
 def _select_best(metrics: list[LayerMetrics]) -> LayerMetrics:
-    pass
     return max(metrics, key=lambda m: (m.auroc or 0.0, m.accuracy, m.f1))
 
 
 def _load_rows(
     dataset_dir: Path, limit: int | None
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    pass
     from datasets import Dataset, DatasetDict, load_from_disk
 
     dataset = load_from_disk(str(dataset_dir))
@@ -304,7 +278,6 @@ def _load_rows(
 
 
 def _tracking_params(config: ProbeTrainConfig, device: str, layers: list[int]) -> dict[str, Any]:
-    pass
     return {
         "model_name": config.model.name,
         "device": device,
@@ -326,7 +299,6 @@ def _tracking_params(config: ProbeTrainConfig, device: str, layers: list[int]) -
 
 
 def train_probes(config: ProbeTrainConfig) -> ProbeTrainResult:
-    pass
     import numpy as np
 
     train_rows, test_rows = _load_rows(config.dataset_dir, config.limit)
@@ -415,7 +387,6 @@ def _persist(
     *,
     token_counts: tuple[int, int] = (0, 0),
 ) -> ProbeTrainResult:
-    pass
     import joblib
 
     output_dir = Path(config.output_dir)
@@ -429,8 +400,6 @@ def _persist(
             "model_name": config.model.name,
             "layer": best.layer,
             "pooling": config.pooling,
-                                                                                 
-                                                                             
             "pooling_tokens": config.tokens_per_example,
             "use_chat_template": config.use_chat_template,
             "max_length": config.max_length,

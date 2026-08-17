@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import sys
@@ -10,8 +8,7 @@ import typer
 from ..config import GenerationConfig, load_config
 from ..logging import configure_logging, get_logger
 
-                                                                                 
-                                                                                  
+
 from ..viz.contrastive_pages import DEFAULT_PAIR_LIMIT
 
 app = typer.Typer(
@@ -25,7 +22,6 @@ logger = get_logger()
 
 @app.callback()
 def _main() -> None:
-    pass
     from ..net import configure_tls
 
     configure_tls()
@@ -65,7 +61,6 @@ def generate(
     ),
     log_level: str = typer.Option("INFO", "--log-level", help="Logging level."),
 ) -> None:
-    pass
     from ..rollout.generator import generate_dataset
 
     cfg = load_config(config, GenerationConfig) if config else GenerationConfig()
@@ -93,7 +88,6 @@ def play(
     seed: int = typer.Option(0, "--seed", help="RNG seed."),
     log_level: str = typer.Option("INFO", "--log-level", help="Logging level."),
 ) -> None:
-    pass
     import random
 
     from ..agents.factory import AgentFactoryBuilder
@@ -138,7 +132,6 @@ def ingest_download(
     ),
     log_level: str = typer.Option("INFO", "--log-level", help="Logging level."),
 ) -> None:
-    pass
     from ..data.ingest import download_reference
 
     configure_logging(log_level)
@@ -152,7 +145,6 @@ def ingest_inspect(
     experiment_dir: Path = typer.Argument(..., help="Directory with agent-logs.json."),
     limit: int = typer.Option(1, "--limit", help="How many records to preview."),
 ) -> None:
-    pass
     from ..data.ingest import iter_step_logs
 
     configure_logging("INFO")
@@ -195,7 +187,6 @@ def build(
     seed: int = typer.Option(0, "--seed", help="Split seed."),
     log_level: str = typer.Option("INFO", "--log-level", help="Logging level."),
 ) -> None:
-    pass
     from ..data.build_hf import build_hf_dataset, build_v2_dataset
 
     configure_logging(log_level)
@@ -223,7 +214,6 @@ def validate(
     ),
     log_level: str = typer.Option("WARNING", "--log-level", help="Logging level."),
 ) -> None:
-    pass
     import json as _json
 
     from ..data.validate import validate_experiment
@@ -258,14 +248,13 @@ def split(
     ),
     log_level: str = typer.Option("INFO", "--log-level", help="Logging level."),
 ) -> None:
-    pass
     from ..data.splits import build_splits, check_split_isolation, write_splits
 
     configure_logging(log_level)
     values = [v.strip() for v in holdout.split(",")] if holdout else None
     assignment = build_splits(
         experiment_dir,
-        strategy=strategy,                          
+        strategy=strategy,
         seed=seed,
         ratios={"train": train, "validation": validation, "test": test},
         holdout_values=values,
@@ -291,7 +280,6 @@ def migrate(
     dest: Path = typer.Option(..., "--dest", "-d", help="Directory to write turns.jsonl into."),
     log_level: str = typer.Option("INFO", "--log-level", help="Logging level."),
 ) -> None:
-    pass
     from ..data.migrate import migrate_directory
 
     configure_logging(log_level)
@@ -319,13 +307,12 @@ def viz_timeline(
     ),
     output: Path | None = typer.Option(None, "--output", "-o", help="Write to a file instead."),
 ) -> None:
-    pass
     from ..viz.reconstruct import load_game, reconstruct_frames
     from ..viz.timeline import render_timeline
 
     game_index, steps, winner, roster = load_game(experiment_dir, game)
     frames, roster = reconstruct_frames(steps, roster)
-                                                                       
+
     use_color = color and output is None
     text = render_timeline(
         game_index, frames, roster, winner, events_only=events_only, color=use_color
@@ -342,7 +329,6 @@ def viz_map(
     ),
     output: Path | None = typer.Option(None, "--output", "-o", help="Write to a file instead."),
 ) -> None:
-    pass
     from ..viz.ascii_map import render_ascii_map
     from ..viz.reconstruct import load_game, reconstruct_frames
 
@@ -360,7 +346,6 @@ def viz_html(
         None, "--output", "-o", help="Output .html path (default: <dir>/viz_<game>.html)."
     ),
 ) -> None:
-    pass
     from ..viz.reconstruct import load_game, reconstruct_frames
     from ..viz.render_html import build_html
 
@@ -403,7 +388,6 @@ def viz_site(
     ),
     log_level: str = typer.Option("INFO", "--log-level", help="Logging level."),
 ) -> None:
-    pass
     from ..viz.site import build_site
 
     configure_logging(log_level)
@@ -419,7 +403,6 @@ def viz_site(
 
 
 def _select_frame(frames: list, step: int | None):
-    pass
     if not frames:
         raise typer.BadParameter("No frames to visualize.")
     if step is None:
@@ -429,7 +412,6 @@ def _select_frame(frames: list, step: int | None):
 
 
 def _emit(text: str, output: Path | None) -> None:
-    pass
     if output is not None:
         output.write_text(text, encoding="utf-8")
         typer.echo(f"Wrote visualization to: {output}")
@@ -461,7 +443,6 @@ def contrastive_build(
     ),
     log_level: str = typer.Option("INFO", "--log-level", help="Logging level."),
 ) -> None:
-    pass
     from ..data.contrastive.build import build_contrastive_dataset
     from ..data.contrastive.config import ContrastiveConfig
     from ..data.contrastive.schema import Source
@@ -497,7 +478,6 @@ def contrastive_viz(
         400, "--limit", help="Max contrast pairs to embed in the HTML (0 = all)."
     ),
 ) -> None:
-    pass
     from ..viz.contrastive_viz import (
         build_contrastive_html,
         load_contrastive_rows,
@@ -556,7 +536,6 @@ def probe_train(
     mlflow: bool = typer.Option(False, "--mlflow", help="Enable MLflow tracking."),
     log_level: str = typer.Option("INFO", "--log-level", help="Logging level."),
 ) -> None:
-    pass
     from ..probes.config import ProbeTrainConfig
     from ..probes.train import train_probes
 
@@ -611,7 +590,6 @@ def probe_tokens(
     ),
     log_level: str = typer.Option("WARNING", "--log-level", help="Logging level."),
 ) -> None:
-    pass
     from transformers import AutoTokenizer
 
     from ..net import configure_tls
@@ -681,7 +659,6 @@ def probe_eval(
     ),
     log_level: str = typer.Option("INFO", "--log-level", help="Logging level."),
 ) -> None:
-    pass
     from ..probes.eval import evaluate_probe
 
     if text_mode not in ("response", "full"):
@@ -692,7 +669,7 @@ def probe_eval(
         probe_path=probe_path,
         dataset_dir=dataset_dir,
         split=split,
-        text_mode=text_mode,                          
+        text_mode=text_mode,
         speak_only=speak_only,
         device=device,
         batch_size=batch_size,
@@ -753,7 +730,6 @@ def probe_compare(
     ),
     log_level: str = typer.Option("INFO", "--log-level", help="Logging level."),
 ) -> None:
-    pass
     from ..probes.eval import compare_probes
 
     if text_mode not in ("response", "full"):
@@ -771,14 +747,14 @@ def probe_compare(
         probe_paths=probes,
         dataset_dir=dataset_dir,
         split=split,
-        text_mode=text_mode,                          
+        text_mode=text_mode,
         speak_only=speak_only,
         device=device,
         batch_size=batch_size,
         limit=limit,
         output_dir=output_dir,
         labels=label_list,
-        fmt=fmt,                          
+        fmt=fmt,
         reuse=reuse,
     )
     typer.echo(f"Compared {len(comparison.reports)} probes on split [{split}]:")
@@ -826,7 +802,6 @@ def probe_suite(
     ),
     log_level: str = typer.Option("INFO", "--log-level", help="Logging level."),
 ) -> None:
-    pass
     from ..probes.suite import run_suite
     from ..probes.suite_config import EvalSuiteConfig
 
@@ -923,7 +898,6 @@ def annotate_gpt(
     ),
     log_level: str = typer.Option("INFO", "--log-level", help="Logging level."),
 ) -> None:
-    pass
     from ..gpt_annotation.pipeline import run_annotation
 
     configure_logging(log_level)
@@ -983,7 +957,6 @@ def annotate_holistic(
     ),
     log_level: str = typer.Option("INFO", "--log-level", help="Logging level."),
 ) -> None:
-    pass
     from ..gpt_annotation.legacy_pipeline import run_holistic_annotation
 
     configure_logging(log_level)
@@ -1001,8 +974,7 @@ def annotate_holistic(
     typer.echo(f"Output: {result.out_dir}")
 
 
-def _override_probe_config(cfg, **flags):                                
-    pass
+def _override_probe_config(cfg, **flags):
     model_update: dict[str, object] = {}
     if flags["model"] is not None:
         model_update["name"] = flags["model"]
@@ -1041,8 +1013,7 @@ def _override_probe_config(cfg, **flags):
     if flags["limit"] is not None:
         top["limit"] = flags["limit"]
     cfg = cfg.model_copy(update=top)
-                                                                               
-                                                                             
+
     if flags.get("pooling_tokens") is not None and cfg.pooling != "last_n":
         msg = f"--pooling-tokens needs --pooling last_n (pooling is {cfg.pooling!r})."
         raise typer.BadParameter(msg)
@@ -1062,7 +1033,6 @@ def _apply_overrides(
     seed: int | None,
     scripted: bool,
 ) -> GenerationConfig:
-    pass
     update: dict[str, object] = {}
     if num_games is not None:
         update["num_games"] = num_games

@@ -1,46 +1,4 @@
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 experiment_name: mixed_qwen3_gemma4
-
-
-
-
-
 
 num_games: 100
 max_turns: 8000
@@ -62,7 +20,6 @@ game:
   max_num_buttons: 1
   kill_cooldown: 4
   initial_kill_cooldown: 4
-
 
   max_timesteps: 40
   map_name: skeld
@@ -94,7 +51,6 @@ agent:
   impostor_backend: ollama
   crewmate_backend: ollama
 
-
   impostor_llm_choices: ["qwen3:8b"]
   crewmate_llm_choices: ["gemma4:e4b"]
   prompt_template: v2-personality
@@ -107,7 +63,6 @@ agent:
     - analytical; reasons about timings, routes, and positions
     - sceptical; questions claims before accepting them
 
-
   impostor_strategy_prompt: >-
     Blend in. Prefer kills with no witnesses, and keep your statements as close
     to the truth as you can while still protecting yourself.
@@ -117,7 +72,6 @@ agent:
   language_style: "plain, conversational English; two or three sentences at most"
   max_parse_retries: 2
 
-
   ollama:
     model: qwen3:8b
     host: http://localhost:11434
@@ -126,21 +80,9 @@ agent:
     num_ctx: 8192
     max_tokens: 1024
 
-
-
     think: false
     request_timeout_s: 240.0
     max_retries: 2
-
-
-
-
-
-
-
-
-
-
 
   model_options:
     "gemma4:e4b":

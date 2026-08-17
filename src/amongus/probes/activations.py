@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import contextlib
@@ -8,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 
 from ..logging import get_logger
 
-if TYPE_CHECKING:                                  
+if TYPE_CHECKING:
     from collections.abc import Sequence
 
     import numpy as np
@@ -17,12 +15,11 @@ if TYPE_CHECKING:
 
 logger = get_logger()
 
-                                                          
+
 SINGLE_VECTOR_POOLINGS = ("last", "mean")
 
 
 def resolve_device(device: str) -> str:
-    pass
     if device != "auto":
         return device
     import torch
@@ -31,7 +28,6 @@ def resolve_device(device: str) -> str:
 
 
 def _resolve_dtype(dtype: str, device: str) -> Any:
-    pass
     import torch
 
     if dtype == "auto":
@@ -40,7 +36,6 @@ def _resolve_dtype(dtype: str, device: str) -> Any:
 
 
 def _build_quant_config(quant: QuantizationConfig, device: str) -> Any:
-    pass
     if not quant.enabled:
         return None
     if device != "cuda":
@@ -59,13 +54,10 @@ def _build_quant_config(quant: QuantizationConfig, device: str) -> Any:
 
 
 def load_model_and_tokenizer(config: ModelConfig, device: str) -> tuple[Any, Any]:
-    pass
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
     from ..net import configure_tls
 
-                                                                              
-                                                                   
     configure_tls()
     quant_config = _build_quant_config(config.quantization, device)
     mode = (
@@ -81,7 +73,6 @@ def load_model_and_tokenizer(config: ModelConfig, device: str) -> tuple[Any, Any
 
     kwargs: dict[str, Any] = {"output_hidden_states": True}
     if quant_config is not None:
-                                                                            
         kwargs["quantization_config"] = quant_config
         kwargs["device_map"] = {"": device}
     else:
@@ -89,15 +80,13 @@ def load_model_and_tokenizer(config: ModelConfig, device: str) -> tuple[Any, Any
 
     model: Any = AutoModelForCausalLM.from_pretrained(config.name, **kwargs)
     if quant_config is None:
-        model.to(device)                                                     
+        model.to(device)
     model.eval()
-                                                                               
-                                                                        
+
     return model, tokenizer
 
 
 def content_span(text: str, content: str) -> tuple[int, int] | None:
-    pass
     stripped = content.strip()
     if not stripped:
         return None
@@ -108,14 +97,12 @@ def content_span(text: str, content: str) -> tuple[int, int] | None:
 
 
 def build_prompt(row: dict[str, Any], tokenizer: Any, *, use_chat_template: bool) -> str:
-    pass
     return build_prompt_with_span(row, tokenizer, use_chat_template=use_chat_template)[0]
 
 
 def build_prompt_with_span(
     row: dict[str, Any], tokenizer: Any, *, use_chat_template: bool
 ) -> tuple[str, tuple[int, int] | None]:
-    pass
     system = (row.get("system_prompt") or "").strip()
     question = (row.get("question") or "").strip()
     answer = (row.get("answer") or "").strip()
@@ -134,7 +121,6 @@ def build_prompt_with_span(
 
 
 def _plain_render(system: str, question: str, answer: str) -> str:
-    pass
     parts = []
     if system:
         parts.append(f"System: {system}")
@@ -146,30 +132,24 @@ def _plain_render(system: str, question: str, answer: str) -> str:
 
 @dataclass
 class TokenActivations:
-    pass
-
     values: np.ndarray
     counts: np.ndarray
     layers: list[int]
 
     @property
     def n_examples(self) -> int:
-        pass
         return int(self.values.shape[0])
 
     @property
     def max_tokens(self) -> int:
-        pass
         return int(self.values.shape[2])
 
     @property
     def n_tokens(self) -> int:
-        pass
         return int(self.counts.sum())
 
     @classmethod
     def from_pooled(cls, values: np.ndarray, layers: list[int]) -> TokenActivations:
-        pass
         import numpy as np
 
         return cls(
@@ -179,7 +159,6 @@ class TokenActivations:
         )
 
     def as_pooled(self) -> np.ndarray:
-        pass
         if self.max_tokens != 1:
             msg = (
                 f"These activations keep up to {self.max_tokens} tokens per example; "
@@ -189,21 +168,18 @@ class TokenActivations:
         return self.values[:, :, 0, :]
 
     def layer_tokens(self, position: int) -> tuple[np.ndarray, np.ndarray]:
-        pass
         import numpy as np
 
-        keep = np.arange(self.max_tokens)[None, :] < self.counts[:, None]          
+        keep = np.arange(self.max_tokens)[None, :] < self.counts[:, None]
         owner = np.repeat(np.arange(self.n_examples), self.counts.astype(int))
         return self.values[:, position, :, :][keep], owner
 
     def expand(self, values: np.ndarray) -> np.ndarray:
-        pass
         import numpy as np
 
         return np.repeat(np.asarray(values), self.counts.astype(int), axis=0)
 
     def describe(self) -> str:
-        pass
         n = self.n_examples
         total = self.n_tokens
         return (
@@ -220,7 +196,6 @@ def select_content_tokens(
     special: Sequence[bool] | None = None,
     span: tuple[int, int] | None = None,
 ) -> list[int]:
-    pass
     unpadded = [i for i, m in enumerate(mask) if int(m) == 1]
     if not unpadded:
         return []
@@ -229,7 +204,6 @@ def select_content_tokens(
     if special is not None:
         content = [i for i in content if not special[i]] or content
     if offsets is not None:
-                                                                        
         sized = [i for i in content if offsets[i][1] > offsets[i][0]]
         content = sized or content
         if span is not None:
@@ -240,12 +214,9 @@ def select_content_tokens(
 
 
 def _special_token_ids(tokenizer: Any) -> set[int]:
-    pass
     ids = {int(i) for i in (getattr(tokenizer, "all_special_ids", None) or [])}
     added = getattr(tokenizer, "added_tokens_decoder", None) or {}
     for token_id, token in added.items():
-                                                                            
-                                                                             
         if getattr(token, "special", False):
             ids.add(int(token_id))
     return ids
@@ -263,7 +234,6 @@ def extract_activations(
     desc: str = "Extracting activations",
     show_progress: bool = True,
 ) -> np.ndarray:
-    pass
     if pooling not in SINGLE_VECTOR_POOLINGS:
         msg = (
             f"pooling={pooling!r} keeps several vectors per example; call "
@@ -297,7 +267,6 @@ def extract_token_activations(
     desc: str = "Extracting activations",
     show_progress: bool = True,
 ) -> TokenActivations:
-    pass
     import numpy as np
     import torch
     from tqdm.auto import tqdm
@@ -336,20 +305,17 @@ def extract_token_activations(
             max_length=max_length,
             **({"return_offsets_mapping": True} if want_offsets and tokenizer.is_fast else {}),
         )
-                                                                                
-                                               
+
         offset_mapping = enc.pop("offset_mapping", None)
         enc = enc.to(device)
         with torch.no_grad():
-                                                                                
-                                                                           
             outputs = model(**enc, output_hidden_states=True)
-        if getattr(outputs, "hidden_states", None) is None:                                
+        if getattr(outputs, "hidden_states", None) is None:
             msg = f"{type(model).__name__} returned no hidden states; cannot extract activations."
             raise RuntimeError(msg)
-                                                                     
-        hidden = torch.stack([outputs.hidden_states[i] for i in layers], dim=1)                
-        mask = enc["attention_mask"]          
+
+        hidden = torch.stack([outputs.hidden_states[i] for i in layers], dim=1)
+        mask = enc["attention_mask"]
 
         if pooling == "last_n":
             selections = _selections(
@@ -357,14 +323,14 @@ def extract_token_activations(
             )
             values, counts = _gather_tokens(hidden, selections, per_example)
         else:
-            values = _pool(hidden, mask, pooling)[:, :, None, :]                
+            values = _pool(hidden, mask, pooling)[:, :, None, :]
             counts = torch.ones(hidden.shape[0], dtype=torch.long)
         value_batches.append(values.to(torch.float32).cpu().numpy())
         count_batches.append(counts.cpu().numpy())
         progress.update(len(batch))
     progress.close()
 
-    if not value_batches:                                                
+    if not value_batches:
         hidden_size = 0
         return TokenActivations(
             values=np.zeros((0, len(layers), per_example, hidden_size), dtype=np.float32),
@@ -389,7 +355,6 @@ def _selections(
     special_ids: set[int],
     count: int,
 ) -> list[list[int]]:
-    pass
     ids = input_ids.tolist()
     masks = mask.tolist()
     offsets = offset_mapping.tolist() if offset_mapping is not None else None
@@ -407,7 +372,6 @@ def _selections(
 
 
 def _gather_tokens(hidden: Any, selections: list[list[int]], count: int) -> tuple[Any, Any]:
-    pass
     import torch
 
     b, layers_n, _, h = hidden.shape
@@ -418,25 +382,23 @@ def _gather_tokens(hidden: Any, selections: list[list[int]], count: int) -> tupl
         for slot, position in enumerate(selected):
             idx[row, slot] = position
     gather_idx = idx.view(b, 1, count, 1).expand(b, layers_n, count, h)
-    picked = hidden.gather(dim=2, index=gather_idx)                
-                                                                                 
-                                                                       
+    picked = hidden.gather(dim=2, index=gather_idx)
+
     valid = torch.arange(count, device=hidden.device)[None, :] < counts.to(hidden.device)[:, None]
     return picked * valid[:, None, :, None].to(picked.dtype), counts
 
 
 def _pool(hidden: Any, mask: Any, pooling: str) -> Any:
-    pass
     if pooling == "mean":
-        m = mask[:, None, :, None].to(hidden.dtype)                
-        summed = (hidden * m).sum(dim=2)             
-        counts = m.sum(dim=2).clamp(min=1.0)             
+        m = mask[:, None, :, None].to(hidden.dtype)
+        summed = (hidden * m).sum(dim=2)
+        counts = m.sum(dim=2).clamp(min=1.0)
         return summed / counts
     if pooling == "last":
         b, layers_n, _, h = hidden.shape
-        last_idx = mask.sum(dim=1) - 1                                          
+        last_idx = mask.sum(dim=1) - 1
         gather_idx = last_idx.view(b, 1, 1, 1).expand(b, layers_n, 1, h)
-        return hidden.gather(dim=2, index=gather_idx).squeeze(2)             
+        return hidden.gather(dim=2, index=gather_idx).squeeze(2)
     msg = f"Unknown pooling {pooling!r}; expected 'last' or 'mean'."
     raise ValueError(msg)
 
@@ -450,7 +412,6 @@ def describe_selected_tokens(
     content_spans: Sequence[tuple[int, int] | None] | None = None,
     limit: int = 3,
 ) -> str:
-    pass
     special_ids = _special_token_ids(tokenizer)
     shown = list(texts)[:limit]
     spans = list(content_spans[:limit]) if content_spans is not None else [None] * len(shown)
@@ -478,24 +439,19 @@ def describe_selected_tokens(
         for slot, position in enumerate(selected, start=1):
             piece = tokenizer.decode([ids[position]])
             lines.append(f"  token {slot}: {piece!r} (position {position})")
-        if not selected:                                
+        if not selected:
             lines.append("  (none selected!)")
         lines.append("")
     return "\n".join(lines)
 
 
-                                                                           
-                                                                               
-       
 _TEXT_CONFIG_ATTRS = ("text_config", "language_config", "llm_config", "decoder", "decoder_config")
 
 
 def _text_config(config: Any) -> Any:
-    pass
     queue: list[Any] = []
     getter = getattr(config, "get_text_config", None)
     if callable(getter):
-                                                                                
         with contextlib.suppress(AttributeError, KeyError, TypeError):
             queue.append(getter())
     queue.append(config)
@@ -506,21 +462,17 @@ def _text_config(config: Any) -> Any:
         if candidate is None or id(candidate) in seen:
             continue
         seen.add(id(candidate))
-                                                                              
-                                                              
+
         if isinstance(getattr(candidate, "num_hidden_layers", None), int):
             return candidate
         queue.extend(getattr(candidate, attr, None) for attr in _TEXT_CONFIG_ATTRS)
     return None
 
 
-                                                                              
-                                                                            
 _UNBOUNDED_POSITIONS = 1_000_000_000
 
 
 def context_limit(model: Any) -> int | None:
-    pass
     config = _text_config(model.config) or model.config
     for attr in ("max_position_embeddings", "n_positions", "n_ctx"):
         value = getattr(config, attr, None)
@@ -530,7 +482,6 @@ def context_limit(model: Any) -> int | None:
 
 
 def _fit_to_context(model: Any, max_length: int) -> int:
-    pass
     limit = context_limit(model)
     if limit is None or max_length <= limit:
         return max_length
@@ -545,7 +496,6 @@ def _fit_to_context(model: Any, max_length: int) -> int:
 
 
 def default_layers(model: Any) -> list[int]:
-    pass
     text_config = _text_config(model.config)
     if text_config is None:
         msg = (

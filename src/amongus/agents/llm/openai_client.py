@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import os
@@ -19,10 +17,7 @@ class OpenAIError(RuntimeError):
 
 
 class OpenAIClient:
-    pass
-
     def __init__(self, config: OpenAIConfig) -> None:
-        pass
         self.config = config
         self.model = config.model
         api_key = os.environ.get(config.api_key_env)
@@ -39,7 +34,6 @@ class OpenAIClient:
         )
 
     def chat(self, system: str, user: str) -> LLMResponse:
-        pass
         payload = self._build_payload(system, user)
         last_exc: Exception | None = None
         for attempt in range(self.config.max_retries + 1):
@@ -60,7 +54,6 @@ class OpenAIClient:
         raise OpenAIError(msg)
 
     def _build_payload(self, system: str, user: str) -> dict[str, object]:
-        pass
         return {
             "model": self.config.model,
             "messages": [
@@ -73,7 +66,6 @@ class OpenAIClient:
         }
 
     def _post_chat(self, payload: dict[str, object]) -> LLMResponse:
-        pass
         response = self._client.post("/chat/completions", json=payload)
         if response.status_code >= 400:
             raise OpenAIError(f"HTTP {response.status_code}: {response.text[:300]}")
@@ -85,15 +77,12 @@ class OpenAIClient:
         return LLMResponse(content=str(content).strip())
 
     def close(self) -> None:
-        pass
         self._client.close()
 
     def __enter__(self) -> OpenAIClient:
-        pass
         return self
 
     def __exit__(self, *_exc: object) -> None:
-        pass
         self.close()
 
 

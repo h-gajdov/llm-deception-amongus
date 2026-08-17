@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 from enum import Enum
@@ -11,8 +9,6 @@ PROMPT_VERSION = "gpt4omini-prompt-1.0"
 
 
 class ClaimType(str, Enum):
-    pass
-
     LOCATION = "location"
     NEGATIVE_LOCATION = "negative_location"
     OTHER_LOCATION = "other_location"
@@ -63,10 +59,6 @@ TURN_TYPE_VALUES = (
     "wait",
     "other",
 )
-
-                                                                               
-                                                  
-                                                                               
 
 
 def _nullable_string() -> dict[str, object]:
@@ -205,19 +197,11 @@ RESPONSE_FORMAT: dict[str, object] = {
 }
 
 
-                                                                               
-                                            
-                                                                               
-
-
 def _pattern(values: tuple[str, ...]) -> str:
-    pass
     return "^(" + "|".join(values) + ")$"
 
 
 class ClaimResult(BaseModel):
-    pass
-
     model_config = ConfigDict(extra="forbid")
 
     text_span: str
@@ -238,8 +222,6 @@ class ClaimResult(BaseModel):
 
 
 class TurnAnnotationResult(BaseModel):
-    pass
-
     model_config = ConfigDict(extra="forbid")
 
     turn_type: str = Field(pattern=_pattern(TURN_TYPE_VALUES))
@@ -259,7 +241,6 @@ class TurnAnnotationResult(BaseModel):
 
     @model_validator(mode="after")
     def _check_non_utterance_defaults(self) -> TurnAnnotationResult:
-        pass
         if not self.contains_utterance:
             defaults_ok = (
                 not self.claims

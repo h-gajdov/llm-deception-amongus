@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -8,13 +6,11 @@ from typing import Any
 from ..data.ingest import iter_json_objects
 from ..data.records import StepLog
 
-                                                                             
-                                                                         
+
 LEGACY_LOG_CANDIDATES: tuple[str, ...] = ("agent-logs-compact.json", "agent-logs.json")
 
 
 def find_legacy_log(dataset_dir: Path) -> Path:
-    pass
     for name in LEGACY_LOG_CANDIDATES:
         path = dataset_dir / name
         if path.exists():
@@ -27,18 +23,15 @@ def find_legacy_log(dataset_dir: Path) -> Path:
 
 
 def load_legacy_rows(log_path: Path) -> list[dict[str, Any]]:
-    pass
     text = log_path.read_text(encoding="utf-8")
     return list(iter_json_objects(text))
 
 
 def row_id(raw: dict[str, Any], index: int) -> str:
-    pass
     return f"{raw.get('game_index')}#{raw.get('step')}#{index}"
 
 
 def build_row_context(raw: dict[str, Any]) -> dict[str, Any]:
-    pass
     step = StepLog.model_validate(raw)
     response = step.interaction.response
     return {

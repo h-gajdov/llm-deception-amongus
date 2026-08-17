@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import fnmatch
@@ -21,7 +19,7 @@ from .eval import LoadedProbe, load_probe, render_eval_text
 from .suite_config import EvalSuiteConfig
 from .train import TorchProbeState, example_scores
 
-if TYPE_CHECKING:                                  
+if TYPE_CHECKING:
     import numpy as np
 
 logger = get_logger()
@@ -29,36 +27,26 @@ logger = get_logger()
 RESULTS_FILE = "results.json"
 CHART_FILE = "suite.png"
 
-                                                                             
-                                                                               
-                                                                                
-                             
+
 _GROUNDED_LABEL = {"truthful": 0, "deceptive": 1}
 
 VARIANT_BASE = "base"
 VARIANT_TRAINED = "trained"
 
 
-                                                                               
-         
-                                                                               
 @dataclass
 class SuiteRow:
-    pass
-
     dataset: str
     dataset_path: str
     dataset_kind: str
     label_source: str
     probe: str
     probe_path: str
-                                                                                
-                                                                              
-                                        
+
     probe_fingerprint: str
     model_name: str
     layer: int
-    variant: str                                           
+    variant: str
     n: int
     n_positive: int
     positive_rate: float
@@ -67,23 +55,21 @@ class SuiteRow:
     precision: float
     recall: float
     auroc: float | None
-    baseline_accuracy: float                           
+    baseline_accuracy: float
     chance_auroc: float = 0.5
-                                                                         
+
     auroc_std: float | None = None
     accuracy_std: float | None = None
     seeds: int = 1
     text_mode: str = "response"
     speak_only: bool = False
-                                                                                 
+
     pooling_tokens: int = 1
     n_tokens: int = 0
 
 
 @dataclass
 class SuiteReport:
-    pass
-
     rows: list[SuiteRow] = field(default_factory=list)
     datasets: list[str] = field(default_factory=list)
     probes: list[str] = field(default_factory=list)
@@ -92,7 +78,6 @@ class SuiteReport:
     chart_path: str = ""
 
     def lift(self) -> list[tuple[str, str, float]]:
-        pass
         base = {
             (r.probe, r.dataset): r.auroc
             for r in self.rows
@@ -108,13 +93,8 @@ class SuiteReport:
         return sorted(out, key=lambda t: t[2], reverse=True)
 
 
-                                                                               
-             
-                                                                               
 @dataclass
 class EvalRow:
-    pass
-
     text: str
     label: int
     is_speak: bool
@@ -122,7 +102,6 @@ class EvalRow:
 
 
 def _lines(path: Path):
-    pass
     with path.open(encoding="utf-8") as handle:
         for line in handle:
             if line.strip():
@@ -130,7 +109,6 @@ def _lines(path: Path):
 
 
 def resolve_label_source(kind: str, requested: str) -> str:
-    pass
     if requested == "auto":
         return "grounded" if kind == KIND_V2 else "holistic"
     if requested == "grounded" and kind != KIND_V2:
@@ -148,7 +126,6 @@ def resolve_label_source(kind: str, requested: str) -> str:
 def load_eval_rows(
     directory: Path, kind: str, config: EvalSuiteConfig
 ) -> tuple[list[EvalRow], str]:
-    pass
     source = resolve_label_source(kind, config.label_source)
     reader = _v2_rows if kind == KIND_V2 else _holistic_rows
     rows = list(reader(directory, source, config))
@@ -158,7 +135,6 @@ def load_eval_rows(
 
 
 def _subsample(rows: list[EvalRow], max_rows: int | None) -> list[EvalRow]:
-    pass
     if max_rows is None or len(rows) <= max_rows:
         return rows
     stride = len(rows) / max_rows
@@ -166,7 +142,6 @@ def _subsample(rows: list[EvalRow], max_rows: int | None) -> list[EvalRow]:
 
 
 def _v2_rows(directory: Path, source: str, config: EvalSuiteConfig):
-    pass
     for line in _lines(directory / "turns.jsonl"):
         turn = json.loads(line)
         output = turn.get("model_output") or {}
@@ -191,7 +166,6 @@ def _v2_rows(directory: Path, source: str, config: EvalSuiteConfig):
 
 
 def _v2_text(turn: dict[str, Any], mode: str) -> str:
-    pass
     model_input = turn.get("model_input") or {}
     raw = str((turn.get("model_output") or {}).get("raw", "")).strip()
     if mode == "response":
@@ -205,9 +179,7 @@ def _v2_text(turn: dict[str, Any], mode: str) -> str:
 
 
 def _holistic_rows(directory: Path, source: str, config: EvalSuiteConfig):
-    pass
-                                                                              
-                                                                       
+
     from ..viz.reconstruct import EventKind, logged_action, parse_action
 
     path = directory / HOLISTIC_DIRNAME / "turns.jsonl"
@@ -229,8 +201,6 @@ def _holistic_rows(directory: Path, source: str, config: EvalSuiteConfig):
         if label is None:
             continue
 
-                                                                         
-                                                                     
         legacy = {
             "full_response": full_response,
             "thinking": _as_text(response.get("Thinking Process")),
@@ -239,7 +209,7 @@ def _holistic_rows(directory: Path, source: str, config: EvalSuiteConfig):
             "all_info": str((interaction.get("prompt") or {}).get("All Info", "")),
         }
         yield EvalRow(
-            text=render_eval_text(legacy, config.text_mode),                          
+            text=render_eval_text(legacy, config.text_mode),
             label=label,
             is_speak=parse_action(action)[0] is EventKind.SPEAK,
             content=full_response.strip() or action.strip(),
@@ -247,7 +217,6 @@ def _holistic_rows(directory: Path, source: str, config: EvalSuiteConfig):
 
 
 def _as_text(value: object) -> str:
-    pass
     if isinstance(value, str):
         return value.strip()
     if isinstance(value, dict):
@@ -256,18 +225,13 @@ def _as_text(value: object) -> str:
     return ""
 
 
-                                                                               
-           
-                                                                               
 def _matches(name: str, include: list[str], exclude: list[str]) -> bool:
-    pass
     if include and not any(fnmatch.fnmatch(name, pattern) for pattern in include):
         return False
     return not any(fnmatch.fnmatch(name, pattern) for pattern in exclude)
 
 
 def select_datasets(config: EvalSuiteConfig) -> list[tuple[Path, str]]:
-    pass
     found: dict[Path, str] = {}
     for root in config.datasets.roots:
         for directory, kind in find_log_datasets(root):
@@ -280,7 +244,6 @@ def select_datasets(config: EvalSuiteConfig) -> list[tuple[Path, str]]:
 
 
 def select_probes(config: EvalSuiteConfig) -> list[Path]:
-    pass
     paths: list[Path] = [Path(p) for p in config.probes.paths]
     for root in config.probes.discover:
         paths.extend(sorted(Path(root).rglob("probe.joblib")))
@@ -292,11 +255,7 @@ def select_probes(config: EvalSuiteConfig) -> list[Path]:
     return [Path(p) for p in seen]
 
 
-                                                                               
-         
-                                                                               
 def _random_state(probe: LoadedProbe, seed: int) -> TorchProbeState:
-    pass
     import numpy as np
 
     state = probe.state
@@ -312,7 +271,6 @@ def _random_state(probe: LoadedProbe, seed: int) -> TorchProbeState:
 
 
 def _metrics(y_true: np.ndarray, y_pred: np.ndarray, y_prob: np.ndarray) -> dict[str, Any]:
-    pass
     import numpy as np
     from sklearn.metrics import (
         accuracy_score,
@@ -326,9 +284,9 @@ def _metrics(y_true: np.ndarray, y_pred: np.ndarray, y_prob: np.ndarray) -> dict
     rate = float(y_true.mean()) if len(y_true) else 0.0
     return {
         "accuracy": float(accuracy_score(y_true, y_pred)),
-        "f1": float(f1_score(y_true, y_pred, zero_division=0.0)),                          
-        "precision": float(precision_score(y_true, y_pred, zero_division=0.0)),                          
-        "recall": float(recall_score(y_true, y_pred, zero_division=0.0)),                          
+        "f1": float(f1_score(y_true, y_pred, zero_division=0.0)),
+        "precision": float(precision_score(y_true, y_pred, zero_division=0.0)),
+        "recall": float(recall_score(y_true, y_pred, zero_division=0.0)),
         "auroc": float(roc_auc_score(y_true, y_prob)) if both else None,
         "baseline_accuracy": float(max(rate, 1.0 - rate)),
         "n_positive": int(np.sum(y_true)),
@@ -342,7 +300,6 @@ def _score_state(
     y_true: np.ndarray,
     grouping: tuple[np.ndarray, int] | None = None,
 ) -> dict[str, Any]:
-    pass
     y_prob = state.predict_proba(x)
     if grouping is not None:
         owner, n_examples = grouping
@@ -351,7 +308,6 @@ def _score_state(
 
 
 def _mean_std(values: list[float | None]) -> tuple[float | None, float | None]:
-    pass
     import numpy as np
 
     defined = [v for v in values if v is not None]
@@ -367,7 +323,6 @@ def _base_metrics(
     config: EvalSuiteConfig,
     grouping: tuple[np.ndarray, int] | None = None,
 ) -> dict[str, Any]:
-    pass
     runs = [
         _score_state(_random_state(probe, config.baseline.seed + i), x, y_true, grouping)
         for i in range(config.baseline.seeds)
@@ -375,7 +330,7 @@ def _base_metrics(
     auroc, auroc_std = _mean_std([r["auroc"] for r in runs])
     accuracy, accuracy_std = _mean_std([r["accuracy"] for r in runs])
     return {
-        **runs[0],                                                                
+        **runs[0],
         "accuracy": accuracy if accuracy is not None else runs[0]["accuracy"],
         "auroc": auroc,
         "f1": float(sum(r["f1"] for r in runs) / len(runs)),
@@ -387,11 +342,7 @@ def _base_metrics(
     }
 
 
-                                                                               
-         
-                                                                               
 def run_suite(config: EvalSuiteConfig) -> SuiteReport:
-    pass
     datasets = select_datasets(config)
     probe_paths = select_probes(config)
     if not probe_paths:
@@ -429,9 +380,6 @@ def run_suite(config: EvalSuiteConfig) -> SuiteReport:
     device = resolve_device(config.device)
     rows_cache: dict[Path, tuple[list[EvalRow], str]] = {}
 
-                                                                                
-                                                                                
-                                              
     for (model_name, _pooling, _tokens, _max_length), group in groups.items():
         skipped = _skipped(report)
         outstanding = [
@@ -461,14 +409,12 @@ def run_suite(config: EvalSuiteConfig) -> SuiteReport:
 
 
 def _skipped(report: SuiteReport) -> set[str]:
-    pass
     return {entry["dataset"] for entry in report.skipped}
 
 
 def _pending_probes(
     group: list[Path], directory: Path, labels: dict[Path, str], report: SuiteReport
 ) -> list[Path]:
-    pass
     have = {(row.probe, row.dataset, row.variant) for row in report.rows}
     return [
         path
@@ -494,7 +440,6 @@ def _run_model_pass(
     report: SuiteReport,
     out_dir: Path,
 ) -> None:
-    pass
     import numpy as np
 
     layers = sorted({probes[p].layer for p in group})
@@ -546,8 +491,7 @@ def _run_model_pass(
                     config=config,
                 )
             )
-                                                                             
-                                                                           
+
             _persist(report, out_dir, config, chart=False)
     finally:
         _release(model)
@@ -560,7 +504,6 @@ def _dataset_rows(
     cache: dict[Path, tuple[list[EvalRow], str]],
     report: SuiteReport,
 ) -> tuple[list[EvalRow], str] | None:
-    pass
     if directory in cache:
         return cache[directory]
     try:
@@ -580,7 +523,6 @@ def _dataset_rows(
 
 
 def _release(model: Any) -> None:
-    pass
     import gc
 
     del model
@@ -590,7 +532,7 @@ def _release(model: Any) -> None:
 
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
-    except ImportError:                                               
+    except ImportError:
         pass
 
 
@@ -613,10 +555,8 @@ def _score_dataset(
     source: str,
     config: EvalSuiteConfig,
 ) -> list[SuiteRow]:
-    pass
     prompts = _apply_template(texts, tokenizer) if config.apply_chat_template else texts
-                                                                              
-                                                                    
+
     spans = [
         content_span(prompt, content or prompt) or (0, len(prompt))
         for prompt, content in zip(prompts, contents, strict=True)
@@ -648,8 +588,6 @@ def _score_dataset(
             "probe_fingerprint": fingerprints[path],
             "model_name": probe.model_name,
             "layer": probe.layer,
-                                                                                  
-                                                       
             "n": len(texts),
             "n_tokens": activations.n_tokens,
             "pooling_tokens": probe.pooling_tokens,
@@ -684,12 +622,10 @@ def _score_dataset(
 
 
 def _fmt(value: float | None) -> str:
-    pass
     return "n/a" if value is None else f"{value:.3f}"
 
 
 def _apply_template(texts: list[str], tokenizer: Any) -> list[str]:
-    pass
     if getattr(tokenizer, "chat_template", None) is None:
         logger.warning("apply_chat_template is on but this tokenizer has none; using raw text.")
         return texts
@@ -704,7 +640,6 @@ def _apply_template(texts: list[str], tokenizer: Any) -> list[str]:
 def _by_model(
     paths: list[Path], probes: dict[Path, LoadedProbe]
 ) -> dict[tuple[str, str, int, int], list[Path]]:
-    pass
     groups: dict[tuple[str, str, int, int], list[Path]] = {}
     for path in paths:
         probe = probes[path]
@@ -714,7 +649,6 @@ def _by_model(
 
 
 def _probe_labels(paths: list[Path]) -> dict[Path, str]:
-    pass
     seen: dict[str, int] = {}
     out: dict[Path, str] = {}
     for path in paths:
@@ -725,12 +659,11 @@ def _probe_labels(paths: list[Path]) -> dict[Path, str]:
 
 
 def _fingerprint(path: Path) -> str:
-    pass
     import hashlib
 
     try:
         return hashlib.sha256(path.read_bytes()).hexdigest()[:16]
-    except OSError:                                                            
+    except OSError:
         return ""
 
 
@@ -740,7 +673,6 @@ def _load_cached(
     labels: dict[Path, str],
     fingerprints: dict[Path, str],
 ) -> dict[tuple[str, str, str], SuiteRow]:
-    pass
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
@@ -762,7 +694,7 @@ def _load_cached(
             continue
         expected = current.get(row.probe)
         if expected is None:
-            continue                                      
+            continue
         if row.probe_fingerprint != expected:
             stale.add(row.probe)
             continue
@@ -773,7 +705,6 @@ def _load_cached(
 
 
 def _settings(config: EvalSuiteConfig) -> dict[str, Any]:
-    pass
     return {
         "label_source": config.label_source,
         "holistic_threshold": config.holistic_threshold,
@@ -789,7 +720,6 @@ def _settings(config: EvalSuiteConfig) -> dict[str, Any]:
 def _persist(
     report: SuiteReport, out_dir: Path, config: EvalSuiteConfig, *, chart: bool = True
 ) -> None:
-    pass
     results = out_dir / RESULTS_FILE
     payload = {
         "settings": _settings(config),
@@ -798,8 +728,7 @@ def _persist(
         "skipped": report.skipped,
         "rows": [asdict(r) for r in report.rows],
     }
-                                                                          
-                                                                           
+
     tmp = results.with_suffix(".json.tmp")
     tmp.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     tmp.replace(results)

@@ -1,13 +1,3 @@
-
-
-
-
-
-
-
-
-
-
 probes:
 
   discover: [data/probes]
@@ -23,9 +13,6 @@ datasets:
   speak_only: false
 
 output_dir: data/probes/eval_suite
-
-
-
 
 label_source: auto
 holistic_threshold: 7

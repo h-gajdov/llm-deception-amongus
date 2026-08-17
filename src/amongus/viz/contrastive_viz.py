@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import json
@@ -19,10 +17,9 @@ _SOURCE_HEX = {"tqa": "#4f8cff", "dqa": "#b57bff", "repeng": "#ffb347"}
 
 
 def load_contrastive_splits(path: str | Path) -> dict[str, list[dict[str, Any]]]:
-    pass
     try:
         import pandas as pd
-    except ImportError as exc:                                             
+    except ImportError as exc:
         msg = "pandas is required to read contrastive datasets."
         raise ImportError(msg) from exc
 
@@ -42,15 +39,13 @@ def load_contrastive_splits(path: str | Path) -> dict[str, list[dict[str, Any]]]
 
 
 def load_contrastive_rows(path: str | Path) -> list[dict[str, Any]]:
-    pass
     return [row for rows in load_contrastive_splits(path).values() for row in rows]
 
 
 def _frames_from_disk(directory: Path) -> dict[str, Any]:
-    pass
     try:
         from datasets import load_from_disk
-    except ImportError as exc:                                             
+    except ImportError as exc:
         msg = "The 'datasets' library is required to read a saved DatasetDict."
         raise ImportError(msg) from exc
     loaded: Any = load_from_disk(str(directory))
@@ -60,7 +55,6 @@ def _frames_from_disk(directory: Path) -> dict[str, Any]:
 
 
 def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
-    pass
     return {
         "total": len(rows),
         "by_source": dict(Counter(r.get("source", "?") for r in rows)),
@@ -70,7 +64,6 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def render_summary_text(stats: dict[str, Any], path: str | Path) -> str:
-    pass
     lines = [
         f"Contrastive dataset: {path}",
         "─" * 56,
@@ -83,12 +76,10 @@ def render_summary_text(stats: dict[str, Any], path: str | Path) -> str:
 
 
 def _pair_key(example_id: str) -> str:
-    pass
     return example_id.rsplit("-", 1)[0]
 
 
 def build_pairs(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    pass
     groups: dict[str, dict[str, Any]] = {}
     for row in rows:
         key = _pair_key(str(row.get("id", "")))
@@ -123,7 +114,6 @@ def build_contrastive_html(
     limit: int = 400,
     seed: int = 0,
 ) -> str:
-    pass
     stats = summarize(rows)
     pairs = build_pairs(rows)
     if limit and len(pairs) > limit:
@@ -148,7 +138,6 @@ def build_contrastive_html(
 
 
 def _escape(text: str) -> str:
-    pass
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 

@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import hashlib
@@ -32,8 +30,6 @@ DEFAULT_RATIOS: dict[str, float] = {"train": 0.7, "validation": 0.15, "test": 0.
 
 @dataclass
 class SplitAssignment:
-    pass
-
     strategy: str
     seed: int
     ratios: dict[str, float] = field(default_factory=lambda: dict(DEFAULT_RATIOS))
@@ -42,15 +38,12 @@ class SplitAssignment:
     factor: str | None = None
 
     def games_in(self, split: str) -> list[str]:
-        pass
         return sorted(g for g, s in self.assignment.items() if s == split)
 
     def counts(self) -> dict[str, int]:
-        pass
         return dict(Counter(self.assignment.values()))
 
     def to_dict(self) -> dict[str, object]:
-        pass
         return {
             "strategy": self.strategy,
             "seed": self.seed,
@@ -70,7 +63,6 @@ def build_splits(
     ratios: dict[str, float] | None = None,
     holdout_values: list[str] | None = None,
 ) -> SplitAssignment:
-    pass
     games = list(iter_games(experiment_dir))
     if not games:
         msg = f"No games.jsonl records under {experiment_dir}"
@@ -83,7 +75,6 @@ def build_splits(
 
 
 def _random_split(games: list[GameRecord], seed: int, ratios: dict[str, float]) -> SplitAssignment:
-    pass
     total = sum(ratios.values())
     if total <= 0:
         msg = "Split ratios must sum to a positive number."
@@ -111,7 +102,6 @@ def _holdout_split(
     holdout_values: list[str] | None,
     experiment_dir: str | Path,
 ) -> SplitAssignment:
-    pass
     values = {game.game_id: _factor_value(game, factor, experiment_dir) for game in games}
     distinct = sorted({v for v in values.values() if v})
     if len(distinct) < 2:
@@ -140,13 +130,11 @@ def _holdout_split(
 
 
 def _rarest(values: dict[str, str], distinct: list[str]) -> str:
-    pass
     counts = Counter(values.values())
     return min(distinct, key=lambda value: (counts[value], value))
 
 
 def _factor_value(game: GameRecord, factor: str, experiment_dir: str | Path) -> str:
-    pass
     generation = game.generation_config or {}
     agent = generation.get("agent", {}) if isinstance(generation, dict) else {}
     config = game.game_config or {}
@@ -172,7 +160,6 @@ def _factor_value(game: GameRecord, factor: str, experiment_dir: str | Path) -> 
 
 
 def _config_fingerprint(config: dict[str, object]) -> str:
-    pass
     keys = (
         "num_players",
         "num_impostors",
@@ -190,7 +177,6 @@ _DECEPTION_TYPE_CACHE: dict[str, dict[str, str]] = {}
 
 
 def _dominant_deception_type(experiment_dir: str | Path, game_id: str) -> str:
-    pass
     key = str(Path(experiment_dir).resolve())
     if key not in _DECEPTION_TYPE_CACHE:
         per_game: dict[str, Counter[str]] = defaultdict(Counter)
@@ -215,13 +201,11 @@ _FACTORS: dict[str, str] = {
 
 
 def _stable_unit_hash(text: str) -> float:
-    pass
     digest = hashlib.sha256(text.encode("utf-8")).digest()
     return int.from_bytes(digest[:8], "big") / float(1 << 64)
 
 
 def check_split_isolation(assignment: SplitAssignment, turns: list[TurnRecordModel]) -> list[str]:
-    pass
     seen: dict[str, set[str]] = defaultdict(set)
     for turn in turns:
         split = assignment.assignment.get(turn.game_id)
@@ -243,7 +227,6 @@ def check_split_isolation(assignment: SplitAssignment, turns: list[TurnRecordMod
 
 
 def write_splits(experiment_dir: str | Path, assignment: SplitAssignment) -> Path:
-    pass
     path = Path(experiment_dir) / "splits.json"
     path.write_text(
         json.dumps(assignment.to_dict(), indent=2, ensure_ascii=False), encoding="utf-8"
@@ -253,7 +236,6 @@ def write_splits(experiment_dir: str | Path, assignment: SplitAssignment) -> Pat
 
 
 def load_splits(experiment_dir: str | Path) -> SplitAssignment | None:
-    pass
     path = Path(experiment_dir) / "splits.json"
     if not path.exists():
         return None

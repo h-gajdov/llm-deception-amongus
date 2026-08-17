@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -16,8 +14,6 @@ from .schema import Source
 
 
 class ContrastiveConfig(BaseModel):
-    pass
-
     model_config = ConfigDict(extra="forbid")
 
     sources: list[Source] = Field(default_factory=lambda: [Source.TQA, Source.DQA])
@@ -26,18 +22,15 @@ class ContrastiveConfig(BaseModel):
     seed: int = 0
     write_parquet: bool = True
 
-                                                                          
     truthfulqa_name: str = "truthfulqa/truthful_qa"
     truthfulqa_config: str = "generation"
     truthfulqa_split: str = "validation"
     max_incorrect_per_question: int = Field(default=1, ge=1)
 
-                                                                                      
     repeng_statements_path: Path | None = None
     repeng_statement_column: str = "statement"
     repeng_label_column: str = "label"
 
-                                                                              
     honest_system: str = HONEST_SYSTEM
     dishonest_system: str = DISHONEST_SYSTEM
     repeng_honest_system: str = REPENG_HONEST_SYSTEM

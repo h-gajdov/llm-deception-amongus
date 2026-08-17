@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import json
@@ -15,25 +13,23 @@ _SECTION_RE = re.compile(
 )
 _THINK_TAG_RE = re.compile(r"<think>.*?</think>", re.IGNORECASE | re.DOTALL)
 _LEADING_ENUM_RE = re.compile(r"^\s*\d+[.)]\s*")
-                                                                          
+
 _ACTION_MARKER_RE = re.compile(r"^\s*\[?\s*action\s*\]?\s*:?\s*", re.IGNORECASE)
-                                                                        
+
 _SMART_QUOTES = "\u201c\u201d\u2018\u2019"
 _DASHES = "\u2013\u2014"
-                                                                          
+
 _DECORATION_RE = re.compile(rf"^[\s*`\"'>\-{_DASHES}{_SMART_QUOTES}]+|[\s*`\"'.{_SMART_QUOTES}]+$")
-                                                                             
-                                                                           
+
+
 _SEPARATOR_RE = re.compile(rf"[:,\-{_DASHES}]+")
 
 
 def strip_think_tags(text: str) -> str:
-    pass
     return _THINK_TAG_RE.sub("", text)
 
 
 def parse_sections(text: str) -> dict[str, str]:
-    pass
     result = {
         "Condensed Memory": "",
         "Thinking Process": "",
@@ -42,7 +38,6 @@ def parse_sections(text: str) -> dict[str, str]:
     }
     matches = list(_SECTION_RE.finditer(text))
     if not matches:
-                                                                          
         result["Action"] = text.strip()
         return result
     for i, match in enumerate(matches):
@@ -54,7 +49,6 @@ def parse_sections(text: str) -> dict[str, str]:
 
 
 def _canonical_key(raw: str) -> str:
-    pass
     lowered = raw.lower()
     if "memory" in lowered:
         return "Condensed Memory"
@@ -66,7 +60,6 @@ def _canonical_key(raw: str) -> str:
 
 
 def parse_speech_intent(text: str) -> dict[str, object] | None:
-    pass
     stripped = text.strip()
     if not stripped:
         return None
@@ -81,7 +74,6 @@ def parse_speech_intent(text: str) -> dict[str, object] | None:
 
 
 def _normalise(text: str) -> str:
-    pass
     text = _LEADING_ENUM_RE.sub("", text.strip())
     text = _ACTION_MARKER_RE.sub("", text)
     text = _DECORATION_RE.sub("", text)
@@ -89,9 +81,6 @@ def _normalise(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip().lower()
 
 
-                                                                                 
-                                                                             
-                                  
 _WAIT_SYNONYMS = frozenset(
     _normalise(phrase)
     for phrase in (
@@ -113,8 +102,6 @@ _WAIT_SYNONYMS = frozenset(
 
 @dataclass(frozen=True)
 class ActionMatch:
-    pass
-
     action: Action | None
     speech: str | None
     status: str
@@ -123,12 +110,10 @@ class ActionMatch:
 
     @property
     def resolved(self) -> bool:
-        pass
         return self.action is not None
 
 
 def match_action(action_text: str, actions: list[Action]) -> ActionMatch:
-    pass
     body = action_text.strip()
     first_line = body.splitlines()[0] if body else ""
     requested = _DECORATION_RE.sub(
@@ -151,7 +136,7 @@ def match_action(action_text: str, actions: list[Action]) -> ActionMatch:
     hits = [a for a in actions if _normalise(a.render()) == target]
     if len(hits) == 1:
         return ActionMatch(hits[0], None, "normalized", requested)
-    if len(hits) > 1:                                                          
+    if len(hits) > 1:
         return ActionMatch(None, None, "none", requested, "ambiguous_action_line")
 
     if target in _WAIT_SYNONYMS:
@@ -164,7 +149,6 @@ def match_action(action_text: str, actions: list[Action]) -> ActionMatch:
 
 
 def _extract_speech(text: str) -> str:
-    pass
     body = _ACTION_MARKER_RE.sub("", _LEADING_ENUM_RE.sub("", text.strip()))
     remainder = re.sub(r"^\s*SPEAK\s*:?\s*", "", body, flags=re.IGNORECASE)
     return remainder.strip().strip("\"'" + _SMART_QUOTES) or "(says nothing of note)"

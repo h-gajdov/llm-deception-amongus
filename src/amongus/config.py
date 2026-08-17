@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -10,32 +8,25 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 T = TypeVar("T", bound=BaseModel)
 
-                                                                               
-                                                                          
+
 SCHEMA_VERSION = "2.0"
 
 VisibilityMode = Literal["full_room", "limited", "noisy", "imperfect_identification"]
 
-                                                                             
-                                                                              
-                                                                  
+
 _VISIBILITY_PRESETS: dict[str, dict[str, Any]] = {
     "full_room": {},
-                                                                                
-                                                         
     "limited": {
         "movement_visible_in_destination_room": False,
         "task_witness_probability": 0.0,
         "cameras_enabled": False,
     },
-                                                                  
     "noisy": {
         "kill_witness_probability": 0.8,
         "vent_witness_probability": 0.7,
         "movement_witness_probability": 0.7,
         "task_witness_probability": 0.6,
     },
-                                                                    
     "imperfect_identification": {
         "kill_identification_probability": 0.5,
         "vent_identification_probability": 0.5,
@@ -45,20 +36,15 @@ _VISIBILITY_PRESETS: dict[str, dict[str, Any]] = {
 
 
 class VisibilityConfig(BaseModel):
-    pass
-
     model_config = ConfigDict(extra="forbid")
 
     mode: VisibilityMode = "full_room"
 
-                                                                     
     kill_witness_probability: float = Field(default=1.0, ge=0.0, le=1.0)
     vent_witness_probability: float = Field(default=1.0, ge=0.0, le=1.0)
     movement_witness_probability: float = Field(default=1.0, ge=0.0, le=1.0)
     task_witness_probability: float = Field(default=1.0, ge=0.0, le=1.0)
 
-                                                                            
-                                                                           
     kill_identification_probability: float = Field(default=1.0, ge=0.0, le=1.0)
     vent_identification_probability: float = Field(default=1.0, ge=0.0, le=1.0)
 
@@ -66,27 +52,22 @@ class VisibilityConfig(BaseModel):
     movement_visible_in_destination_room: bool = True
 
     cameras_enabled: bool = True
-                                                                                
-                                                                 
+
     camera_rooms: list[str] = Field(
         default_factory=lambda: ["Cafeteria", "Admin", "Upper Engine", "Electrical"]
     )
     camera_shows_identity: bool = True
 
-                                                                              
-                                                                               
     ghosts_observe: bool = False
 
     reveal_role_on_ejection: bool = False
     reveal_votes: bool = True
-                                                                               
-                                                                     
+
     body_report_reveals_killer: bool = False
 
     @model_validator(mode="before")
     @classmethod
     def _apply_preset(cls, data: Any) -> Any:
-        pass
         if not isinstance(data, dict):
             return data
         preset = _VISIBILITY_PRESETS.get(str(data.get("mode", "full_room")), {})
@@ -94,8 +75,6 @@ class VisibilityConfig(BaseModel):
 
 
 class GameConfig(BaseModel):
-    pass
-
     model_config = ConfigDict(extra="forbid")
 
     num_players: int = Field(default=7, ge=3, le=15)
@@ -106,9 +85,7 @@ class GameConfig(BaseModel):
     discussion_rounds: int = Field(default=3, ge=1)
     max_num_buttons: int = Field(default=2, ge=0)
     kill_cooldown: int = Field(default=3, ge=0)
-                                                                              
-                                                                               
-                                                           
+
     initial_kill_cooldown: int = Field(default=3, ge=0)
     max_timesteps: int = Field(default=50, ge=1)
 
@@ -116,16 +93,13 @@ class GameConfig(BaseModel):
     meeting_order: Literal["seating", "random", "reporter_first"] = "seating"
     role_assignment: Literal["random", "fixed"] = "random"
     fixed_impostor_indices: list[int] = Field(default_factory=list)
-                                                                              
-                                                                              
-                                                       
+
     count_dead_crewmate_tasks: bool = False
 
     visibility: VisibilityConfig = Field(default_factory=VisibilityConfig)
 
     @model_validator(mode="after")
     def _check_impostor_ratio(self) -> GameConfig:
-        pass
         if self.num_impostors * 2 >= self.num_players:
             msg = (
                 f"num_impostors ({self.num_impostors}) must be < half of "
@@ -136,7 +110,6 @@ class GameConfig(BaseModel):
 
     @model_validator(mode="after")
     def _check_fixed_roles(self) -> GameConfig:
-        pass
         if self.role_assignment != "fixed":
             return self
         indices = self.fixed_impostor_indices
@@ -153,8 +126,6 @@ class GameConfig(BaseModel):
 
 
 class OllamaConfig(BaseModel):
-    pass
-
     model_config = ConfigDict(extra="forbid")
 
     model: str = "qwen3:8b"
@@ -163,20 +134,13 @@ class OllamaConfig(BaseModel):
     top_p: float = Field(default=0.9, ge=0.0, le=1.0)
     num_ctx: int = Field(default=8192, ge=512)
     max_tokens: int = Field(default=1024, ge=1)
-                                                                              
-                                                                              
-                                                                          
-                                                                               
-                                                                        
-                                                                                
+
     think: bool = False
     request_timeout_s: float = Field(default=180.0, gt=0.0)
     max_retries: int = Field(default=2, ge=0)
 
 
 class OpenAIConfig(BaseModel):
-    pass
-
     model_config = ConfigDict(extra="forbid")
 
     model: str = "gpt-4o-mini"
@@ -189,15 +153,10 @@ class OpenAIConfig(BaseModel):
     max_retries: int = Field(default=3, ge=0)
 
 
-                                                                       
-                                                                               
-                                                                      
 BACKENDS = ("ollama", "openai", "scripted", "heuristic")
 
 
 class AgentConfig(BaseModel):
-    pass
-
     model_config = ConfigDict(extra="forbid")
 
     impostor_backend: str = "ollama"
@@ -207,36 +166,21 @@ class AgentConfig(BaseModel):
     ollama: OllamaConfig = Field(default_factory=OllamaConfig)
     openai: OpenAIConfig = Field(default_factory=OpenAIConfig)
 
-                                                                                
-                                                                           
-                                                                       
     prompt_template: str = "v2"
-                                                                              
-                                                                          
-                                                          
+
     role_prompt_mode: Literal["separate", "inline"] = "separate"
     personality_mode: Literal["none", "sampled"] = "none"
     personalities: list[str] = Field(default_factory=list)
     impostor_strategy_prompt: str | None = None
     crewmate_strategy_prompt: str | None = None
     language_style: str | None = None
-                                                                              
-                                                                            
+
     max_parse_retries: int = Field(default=1, ge=0)
 
-                                                                               
-                                                                   
-                                                                            
-                                                                               
-                                                                             
-                                                                              
-                                                                           
-                 
     model_options: dict[str, dict[str, Any]] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _check_personalities(self) -> AgentConfig:
-        pass
         if self.personality_mode == "sampled" and not self.personalities:
             msg = "personality_mode='sampled' requires a non-empty 'personalities' list."
             raise ValueError(msg)
@@ -244,7 +188,6 @@ class AgentConfig(BaseModel):
 
     @model_validator(mode="after")
     def _check_backends(self) -> AgentConfig:
-        pass
         for backend in (self.impostor_backend, self.crewmate_backend):
             if backend not in BACKENDS:
                 msg = f"Unknown backend {backend!r}; expected one of {BACKENDS}."
@@ -253,7 +196,6 @@ class AgentConfig(BaseModel):
 
     @model_validator(mode="after")
     def _check_model_options(self) -> AgentConfig:
-        pass
         known = set(OllamaConfig.model_fields) | set(OpenAIConfig.model_fields)
         for choice, overrides in self.model_options.items():
             unknown = sorted(set(overrides) - known)
@@ -273,46 +215,30 @@ class AgentConfig(BaseModel):
 
 
 class GenerationConfig(BaseModel):
-    pass
-
     model_config = ConfigDict(extra="forbid")
 
     experiment_name: str = "qwen3_8b_selfplay"
     num_games: int = Field(default=10, ge=1)
-                                                                              
-                                                                           
-                                                                            
-                                                                      
-                                               
-     
-                                                                             
-                                                                              
-                                                                                 
-                                                                                
-                                                                                 
+
     max_turns: int | None = Field(default=None, ge=1)
     seed: int = 0
     output_dir: Path = Path("expt-logs")
     log_level: str = "INFO"
     write_compact_logs: bool = True
-                                                                              
-                                                                               
-                                                      
+
     write_legacy_logs: bool = True
-                                                                       
+
     write_world_states: bool = True
-                                                             
+
     annotate: bool = True
     game: GameConfig = Field(default_factory=GameConfig)
     agent: AgentConfig = Field(default_factory=AgentConfig)
 
     def experiment_dirname(self) -> str:
-        pass
         return f"{self.experiment_name}_{self.num_games}_games"
 
 
-def load_config(path: str | Path, model: type[T] = GenerationConfig) -> T:                            
-    pass
+def load_config(path: str | Path, model: type[T] = GenerationConfig) -> T:
     path = Path(path)
     if not path.exists():
         msg = f"Config file not found: {path}"

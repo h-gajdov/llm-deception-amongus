@@ -1,27 +1,19 @@
-
-
 from __future__ import annotations
 
 from enum import Enum
 
 
 class Role(str, Enum):
-    pass
-
     CREWMATE = "Crewmate"
     IMPOSTOR = "Impostor"
 
 
 class Phase(str, Enum):
-    pass
-
     TASK = "Task phase"
     MEETING = "Meeting phase"
 
 
 class ActionType(str, Enum):
-    pass
-
     MOVE = "MOVE"
     SPEAK = "SPEAK"
     VOTE = "VOTE"
@@ -36,14 +28,11 @@ class ActionType(str, Enum):
 
 
 class TaskLength(str, Enum):
-    pass
-
     COMMON = "common"
     SHORT = "short"
     LONG = "long"
 
 
-                                                                               
 PLAYER_COLORS: tuple[str, ...] = (
     "red",
     "orange",
@@ -61,8 +50,6 @@ PLAYER_COLORS: tuple[str, ...] = (
 
 
 class WinReason(str, Enum):
-    pass
-
     IMPOSTORS_OUTNUMBER = "Impostors win! (Crewmates being outnumbered or tied to impostors))"
     IMPOSTORS_TIME_UP = "Impostors win! (Time limit reached)"
     CREWMATES_TASKS_DONE = "Crewmates win! (All tasks completed)"

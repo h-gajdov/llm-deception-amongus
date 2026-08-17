@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -12,17 +10,13 @@ from .state import GameState, PlayerState
 
 @dataclass(frozen=True)
 class ActionRejection:
-    pass
-
     code: str
     detail: str
 
     def to_dict(self) -> dict[str, str]:
-        pass
         return {"code": self.code, "detail": self.detail}
 
 
-                                                                         
 _MEETING_ONLY = {ActionType.SPEAK, ActionType.VOTE}
 _TASK_ONLY = {
     ActionType.MOVE,
@@ -42,7 +36,6 @@ def validate_action(
     action: Action,
     game_map: GameMap,
 ) -> ActionRejection | None:
-    pass
     if not player.alive:
         return ActionRejection("actor_dead", f"{player.name} is dead and cannot act.")
 
@@ -55,7 +48,6 @@ def validate_action(
 
 
 def _check_phase(state: GameState, action: Action) -> ActionRejection | None:
-    pass
     in_meeting = state.phase is Phase.MEETING
     if in_meeting and action.type in _TASK_ONLY:
         return ActionRejection(
@@ -71,7 +63,6 @@ def _check_phase(state: GameState, action: Action) -> ActionRejection | None:
 def _check_move(
     state: GameState, player: PlayerState, action: Action, game_map: GameMap
 ) -> ActionRejection | None:
-    pass
     del state
     dest = action.target_room
     if dest is None:
@@ -86,7 +77,6 @@ def _check_move(
 def _check_vent(
     state: GameState, player: PlayerState, action: Action, game_map: GameMap
 ) -> ActionRejection | None:
-    pass
     del state
     if not player.is_impostor:
         return ActionRejection("vent_not_impostor", "Only impostors can use vents.")
@@ -103,7 +93,6 @@ def _check_vent(
 def _check_kill(
     state: GameState, player: PlayerState, action: Action, game_map: GameMap
 ) -> ActionRejection | None:
-    pass
     del game_map
     if not player.is_impostor:
         return ActionRejection("kill_not_impostor", "Only impostors can kill.")
@@ -129,7 +118,6 @@ def _check_kill(
 def _check_task(
     state: GameState, player: PlayerState, action: Action, game_map: GameMap
 ) -> ActionRejection | None:
-    pass
     del state, game_map
     real = action.type is ActionType.COMPLETE_TASK
     if real and player.is_impostor:
@@ -154,7 +142,6 @@ def _check_task(
 def _check_report(
     state: GameState, player: PlayerState, action: Action, game_map: GameMap
 ) -> ActionRejection | None:
-    pass
     del action, game_map
     if not state.dead_bodies.get(player.location):
         return ActionRejection("report_no_body", f"No unreported body in {player.location}.")
@@ -164,7 +151,6 @@ def _check_report(
 def _check_call_meeting(
     state: GameState, player: PlayerState, action: Action, game_map: GameMap
 ) -> ActionRejection | None:
-    pass
     del action
     if player.location != game_map.emergency_button_room:
         return ActionRejection(
@@ -183,7 +169,6 @@ def _check_call_meeting(
 def _check_security(
     state: GameState, player: PlayerState, action: Action, game_map: GameMap
 ) -> ActionRejection | None:
-    pass
     del state, action
     if player.location != game_map.security_camera_room:
         return ActionRejection(
@@ -195,7 +180,6 @@ def _check_security(
 def _check_vote(
     state: GameState, player: PlayerState, action: Action, game_map: GameMap
 ) -> ActionRejection | None:
-    pass
     del game_map
     target = action.target_name
     if target is None:
@@ -226,7 +210,6 @@ _CHECKS = {
 
 
 def safe_fallback(actions: list[Action]) -> Action:
-    pass
     wait = next((a for a in actions if a.type is ActionType.WAIT), None)
     if wait is not None:
         return wait

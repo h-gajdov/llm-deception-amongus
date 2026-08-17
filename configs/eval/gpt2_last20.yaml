@@ -1,16 +1,4 @@
-
-
-
-
-
-
-
-
-
-
-
 probes:
-
 
   discover: []
   paths:
@@ -23,22 +11,12 @@ datasets:
   max_rows: null
   speak_only: false
 
-
-
-
-
 output_dir: data/probes/eval_suite_gpt2_last20
-
-
-
 
 label_source: auto
 holistic_threshold: 7
 
 text_mode: response
-
-
-
 
 apply_chat_template: false
 

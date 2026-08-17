@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import json
@@ -35,9 +33,7 @@ from .schema import ANNOTATION_SCHEMA_VERSION, PROMPT_VERSION, RESPONSE_FORMAT, 
 
 logger = get_logger()
 
-                                                                   
-                                                                         
-                       
+
 LIVE_CHECKPOINT_INTERVAL = 10
 
 OUT_DIRNAME = "gpt4omini"
@@ -47,15 +43,12 @@ FAILURES_FILE = "annotation-failures.jsonl"
 BATCH_INPUT_FILE = "batch-input.jsonl"
 ANNOTATION_METADATA_FILE = "annotation-metadata.json"
 
-                                                                              
-                                                        
+
 MAX_ATTEMPTS = 3
 
 
 @dataclass
 class AnnotationRunResult:
-    pass
-
     dataset_dir: Path
     out_dir: Path
     status: str
@@ -77,7 +70,6 @@ def run_annotation(
     batch_size: int = DEFAULT_BATCH_SIZE,
     live: bool = False,
 ) -> AnnotationRunResult:
-    pass
     dataset_dir = Path(dataset_dir)
     turns_path = dataset_dir / TURNS_FILE
     if not turns_path.exists():
@@ -200,10 +192,6 @@ def run_annotation(
     batch_id = metadata.get("batch_id")
 
     if batch_id:
-                                                                           
-                                                                             
-                                                                           
-                             
         chunk_ids = metadata.get("batch_row_ids") or pending_ids
         batch = retrieve_batch(client, batch_id)
         if wait and batch.status not in TERMINAL_STATUSES:
@@ -235,7 +223,6 @@ def run_annotation(
         write_batch_input(input_path, requests)
 
         def _checkpoint(batch: Any, requests: list[dict[str, object]] = requests) -> None:
-            pass
             is_new_batch = metadata.get("batch_id") != batch.id
             metadata["batch_id"] = batch.id
             metadata["batch_status"] = batch.status
@@ -260,9 +247,7 @@ def run_annotation(
             poll_timeout_s=poll_timeout_s,
             checkpoint=_checkpoint,
         )
-                                                                             
-                                                                          
-                                                                      
+
         _checkpoint(batch)
         if wait:
             status = _handle_batch_status(
@@ -302,14 +287,13 @@ def _handle_batch_status(
     failures: dict[str, dict[str, Any]],
     metadata: dict[str, Any],
 ) -> str:
-    pass
     metadata["batch_status"] = batch.status
     metadata["batch_request_counts"] = request_counts_dict(batch)
     if batch.status == "completed":
         _merge_batch(client, batch, existing_annotations, attempts, failures, metadata)
         metadata["batch_id"] = None
         return "merged"
-    if batch.status in TERMINAL_STATUSES:                                
+    if batch.status in TERMINAL_STATUSES:
         error_detail = describe_batch_errors(batch)
         for tid in pending_ids:
             attempts[tid] = attempts.get(tid, 0) + 1
@@ -338,7 +322,6 @@ def _run_live(
     out_dir: Path,
     original_turns: list[dict[str, Any]],
 ) -> None:
-    pass
     turn_by_id = {t.turn_id: t for t in ctx.turns}
     usage_totals: Counter[str] = Counter()
     models_seen: Counter[str] = Counter()
@@ -385,7 +368,7 @@ def _run_live(
                     usage = (meta or {}).get("usage") or {}
                     for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
                         usage_totals[key] += int(usage.get(key, 0) or 0)
-                    error_type = None                                             
+                    error_type = None
             if error_type is not None:
                 attempts[tid] = attempts.get(tid, 0) + 1
                 failures[tid] = {
@@ -411,7 +394,6 @@ def _merge_batch(
     failures: dict[str, dict[str, Any]],
     metadata: dict[str, Any],
 ) -> None:
-    pass
     usage_totals: Counter[str] = Counter()
     models_seen: Counter[str] = Counter()
     for line in iter_batch_result_lines(client, batch):
@@ -450,7 +432,6 @@ def _merge_batch(
 def _parse_result_line(
     line: dict[str, Any],
 ) -> tuple[str, dict[str, Any] | None, str | None, str | None, dict[str, Any] | None]:
-    pass
     custom_id = str(line.get("custom_id", ""))
     error = line.get("error")
     if error:
@@ -485,7 +466,6 @@ def _finalize(
     failures: dict[str, dict[str, Any]],
     metadata: dict[str, Any],
 ) -> None:
-    pass
     records: list[dict[str, Any]] = []
     claims_rows: list[dict[str, Any]] = []
     truth_dist: Counter[str] = Counter()
@@ -549,7 +529,6 @@ def _finalize(
 
 
 def _status_message(status: str, metadata: dict[str, Any], annotated: int, total: int) -> str:
-    pass
     batch_id = metadata.get("batch_id")
     if status == "submitted":
         history = metadata.get("batch_history") or [{}]
@@ -582,13 +561,7 @@ def _status_message(status: str, metadata: dict[str, Any], annotated: int, total
     return f"{annotated}/{total} turns annotated."
 
 
-                                                                               
-                  
-                                                                               
-
-
 def _read_raw_jsonl(path: Path) -> list[dict[str, Any]]:
-    pass
     if not path.exists():
         return []
     rows = []
@@ -600,7 +573,6 @@ def _read_raw_jsonl(path: Path) -> list[dict[str, Any]]:
 
 
 def _write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
-    pass
     with path.open("w", encoding="utf-8") as handle:
         for row in rows:
             handle.write(json.dumps(row, ensure_ascii=False))
@@ -608,19 +580,16 @@ def _write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
 
 
 def _read_existing_annotations(out_dir: Path) -> dict[str, dict[str, Any] | None]:
-    pass
     rows = _read_raw_jsonl(out_dir / TURNS_FILE)
     return {str(row["turn_id"]): row.get("gpt_annotation") for row in rows if "turn_id" in row}
 
 
 def _read_failures(out_dir: Path) -> dict[str, dict[str, Any]]:
-    pass
     rows = _read_raw_jsonl(out_dir / FAILURES_FILE)
     return {str(row["turn_id"]): row for row in rows if "turn_id" in row}
 
 
 def _read_metadata(out_dir: Path) -> dict[str, Any] | None:
-    pass
     path = out_dir / ANNOTATION_METADATA_FILE
     if not path.exists():
         return None
@@ -628,7 +597,6 @@ def _read_metadata(out_dir: Path) -> dict[str, Any] | None:
 
 
 def _new_metadata(dataset_dir: Path, model: str) -> dict[str, Any]:
-    pass
     return {
         "annotation_schema_version": ANNOTATION_SCHEMA_VERSION,
         "prompt_version": PROMPT_VERSION,

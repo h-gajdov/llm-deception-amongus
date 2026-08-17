@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import random
@@ -9,7 +7,7 @@ from ..config import VisibilityConfig
 from .events import EventType, Perception, PerceptionSource, WorldEvent
 from .state import GameState, PlayerState
 
-                                                                              
+
 UNKNOWN_ACTOR = "someone"
 
 
@@ -19,23 +17,18 @@ def resolve_perceptions(
     config: VisibilityConfig,
     rng: random.Random,
 ) -> list[Perception]:
-    pass
     handler = _HANDLERS.get(event.type)
     if handler is None:
         return []
     return handler(event, state, config, rng)
 
 
-                                                                               
-                  
-                                                                               
 def _observers(
     state: GameState,
     config: VisibilityConfig,
     rooms: tuple[str | None, ...],
     exclude: tuple[int | None, ...] = (),
 ) -> list[PlayerState]:
-    pass
     blocked = {i for i in exclude if i is not None}
     wanted = {r for r in rooms if r is not None}
     seen: set[int] = set()
@@ -52,12 +45,10 @@ def _observers(
 
 
 def _audience(state: GameState, config: VisibilityConfig) -> list[PlayerState]:
-    pass
     return [p for p in state.players if p.alive or config.ghosts_observe]
 
 
 def _name(state: GameState, index: int | None) -> str | None:
-    pass
     if index is None:
         return None
     player = state.player_by_index(index)
@@ -65,7 +56,6 @@ def _name(state: GameState, index: int | None) -> str | None:
 
 
 def _rolls(rng: random.Random, probability: float) -> bool:
-    pass
     if probability >= 1.0:
         return True
     if probability <= 0.0:
@@ -85,7 +75,6 @@ def _perception(
     room: str | None = None,
     speaker_name: str | None = None,
 ) -> Perception:
-    pass
     return Perception(
         event_seq=event.seq,
         observer=observer.index,
@@ -102,13 +91,9 @@ def _perception(
     )
 
 
-                                                                               
-                      
-                                                                               
 def _move_rule(
     event: WorldEvent, state: GameState, config: VisibilityConfig, rng: random.Random
 ) -> list[Perception]:
-    pass
     actor = _name(state, event.actor)
     out: list[Perception] = []
     if config.movement_visible_in_source_room:
@@ -145,7 +130,6 @@ def _move_rule(
 def _vent_rule(
     event: WorldEvent, state: GameState, config: VisibilityConfig, rng: random.Random
 ) -> list[Perception]:
-    pass
     actor = _name(state, event.actor)
     out: list[Perception] = []
     for room, verb in ((event.room, "climb into"), (event.to_room, "climb out of")):
@@ -171,7 +155,6 @@ def _vent_rule(
 def _task_rule(
     event: WorldEvent, state: GameState, config: VisibilityConfig, rng: random.Random
 ) -> list[Perception]:
-    pass
     actor = _name(state, event.actor)
     out: list[Perception] = []
     for observer in _observers(state, config, (event.room,), exclude=(event.actor,)):
@@ -192,7 +175,6 @@ def _task_rule(
 def _kill_rule(
     event: WorldEvent, state: GameState, config: VisibilityConfig, rng: random.Random
 ) -> list[Perception]:
-    pass
     actor = _name(state, event.actor)
     victim = _name(state, event.target)
     out: list[Perception] = []
@@ -221,7 +203,6 @@ def _kill_rule(
 def _body_sighted_rule(
     event: WorldEvent, state: GameState, config: VisibilityConfig, rng: random.Random
 ) -> list[Perception]:
-    pass
     del rng
     victim = event.payload.get("victim_name")
     out: list[Perception] = []
@@ -243,13 +224,12 @@ def _body_sighted_rule(
 def _body_reported_rule(
     event: WorldEvent, state: GameState, config: VisibilityConfig, rng: random.Random
 ) -> list[Perception]:
-    pass
     del rng
     reporter = _name(state, event.actor)
     victim = event.payload.get("victim_name")
     text = f"{reporter} reported the body of {victim} in {event.room}. "
     text += "Nobody has been shown to be the killer."
-    if config.body_report_reveals_killer:                                  
+    if config.body_report_reveals_killer:
         killer = event.payload.get("killer_name")
         text = f"{reporter} reported the body of {victim} in {event.room}, killed by {killer}."
     return [
@@ -262,7 +242,6 @@ def _body_reported_rule(
 def _meeting_called_rule(
     event: WorldEvent, state: GameState, config: VisibilityConfig, rng: random.Random
 ) -> list[Perception]:
-    pass
     del rng
     caller = _name(state, event.actor)
     text = f"{caller} called an emergency meeting."
@@ -276,7 +255,6 @@ def _meeting_called_rule(
 def _speech_rule(
     event: WorldEvent, state: GameState, config: VisibilityConfig, rng: random.Random
 ) -> list[Perception]:
-    pass
     del rng
     speaker = _name(state, event.actor)
     text = f'{speaker} said: "{event.text}"'
@@ -296,7 +274,6 @@ def _speech_rule(
 def _vote_result_rule(
     event: WorldEvent, state: GameState, config: VisibilityConfig, rng: random.Random
 ) -> list[Perception]:
-    pass
     del rng
     if not config.reveal_votes:
         return []
@@ -310,7 +287,6 @@ def _vote_result_rule(
 def _ejection_rule(
     event: WorldEvent, state: GameState, config: VisibilityConfig, rng: random.Random
 ) -> list[Perception]:
-    pass
     del rng
     ejected = _name(state, event.target)
     if ejected is None:
@@ -329,7 +305,6 @@ def _ejection_rule(
 def _camera_rule(
     event: WorldEvent, state: GameState, config: VisibilityConfig, rng: random.Random
 ) -> list[Perception]:
-    pass
     del rng
     sightings = event.payload.get("sightings")
     text = f"You checked the cameras. They show: {sightings}"
@@ -341,7 +316,6 @@ def _camera_rule(
 
 
 def camera_sightings(state: GameState, config: VisibilityConfig, viewer: int) -> str:
-    pass
     covered = [r for r in config.camera_rooms if r in set(state.rooms_in_play())]
     lines: list[str] = []
     for room in covered:

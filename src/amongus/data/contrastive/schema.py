@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 from enum import Enum
@@ -7,9 +5,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-                                                                             
-                                                                              
-                                                                             
+
 LABEL_HONEST = 0
 LABEL_DISHONEST = 1
 
@@ -17,23 +13,17 @@ LABEL_NAMES = {LABEL_HONEST: "honest", LABEL_DISHONEST: "dishonest"}
 
 
 class Axis(str, Enum):
-    pass
-
-    LYING = "lying"                                         
-    DECEPTION = "deception"                                                     
+    LYING = "lying"
+    DECEPTION = "deception"
 
 
 class Source(str, Enum):
-    pass
-
     TQA = "tqa"
     DQA = "dqa"
     REPENG = "repeng"
 
 
 class ContrastiveExample(BaseModel):
-    pass
-
     model_config = ConfigDict(extra="forbid")
 
     id: str
@@ -47,7 +37,6 @@ class ContrastiveExample(BaseModel):
     category: str | None = None
 
     def render_plain(self) -> str:
-        pass
         parts = []
         if self.system_prompt:
             parts.append(f"System: {self.system_prompt}")
@@ -57,7 +46,6 @@ class ContrastiveExample(BaseModel):
         return "\n".join(parts)
 
     def to_row(self) -> dict[str, Any]:
-        pass
         return {
             "id": self.id,
             "source": self.source.value,

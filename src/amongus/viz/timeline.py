@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 from .layout import DEAD_EMOJI, emoji_for
@@ -7,11 +5,11 @@ from .reconstruct import EventKind, Frame, PlayerInfo
 
 _RULE = "─" * 62
 
-                                                                    
+
 _RED = "\033[31m"
 _RESET = "\033[0m"
 
-                                                            
+
 _ROUTINE = {EventKind.MOVE, EventKind.TASK, EventKind.OTHER}
 
 
@@ -24,7 +22,6 @@ def render_timeline(
     events_only: bool = False,
     color: bool = False,
 ) -> str:
-    pass
     lines = [game_index, _RULE, "", _roster_line(roster, color), ""]
     for frame in frames:
         if events_only and frame.kind in _ROUTINE:
@@ -41,12 +38,10 @@ def render_timeline(
 
 
 def _red(text: str) -> str:
-    pass
     return f"{_RED}{text}{_RESET}"
 
 
 def _roster_line(roster: list[PlayerInfo], color: bool = False) -> str:
-    pass
     parts = []
     for p in roster:
         entry = f"{emoji_for(p.color)} {p.color.capitalize()} ({p.role})"
@@ -55,7 +50,6 @@ def _roster_line(roster: list[PlayerInfo], color: bool = False) -> str:
 
 
 def _render_frame(frame: Frame) -> list[str]:
-    pass
     icon = emoji_for(frame.actor_color)
     who = f"{icon} {frame.actor_color.capitalize()}"
     match frame.kind:

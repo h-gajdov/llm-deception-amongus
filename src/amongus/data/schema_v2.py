@@ -1,12 +1,10 @@
-
-
 from __future__ import annotations
 
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-                                                                     
+
 TURNS_FILE = "turns.jsonl"
 WORLD_STATES_FILE = "world-states.jsonl"
 EVENTS_FILE = "events.jsonl"
@@ -15,8 +13,6 @@ METADATA_FILE = "dataset-metadata.json"
 
 
 class ActorInfo(BaseModel):
-    pass
-
     model_config = ConfigDict(extra="allow")
 
     player_id: str
@@ -28,8 +24,6 @@ class ActorInfo(BaseModel):
 
 
 class ModelInput(BaseModel):
-    pass
-
     model_config = ConfigDict(extra="allow")
 
     system_prompt: str = ""
@@ -39,8 +33,6 @@ class ModelInput(BaseModel):
 
 
 class ModelOutput(BaseModel):
-    pass
-
     model_config = ConfigDict(extra="allow")
 
     raw: str = ""
@@ -50,20 +42,17 @@ class ModelOutput(BaseModel):
     requested_action: dict[str, Any] = Field(default_factory=dict)
     requested_action_text: str = ""
     requested_action_valid: bool = True
-                                                                             
-                              
+
     execution_source: str = "model"
     fallback_reason: str | None = None
     speech: str | None = None
     declared_speech: dict[str, Any] | None = None
-                                                                              
+
     parse_status: str = "valid"
     attempts: list[dict[str, Any]] = Field(default_factory=list)
 
 
 class TurnRecordModel(BaseModel):
-    pass
-
     model_config = ConfigDict(extra="allow")
 
     schema_version: str = "2.0"
@@ -84,15 +73,12 @@ class TurnRecordModel(BaseModel):
     probe_regions: dict[str, list[int]] = Field(default_factory=dict)
 
     def is_speech(self) -> bool:
-        pass
         return bool(self.model_output.speech)
 
     def deception_status(self) -> str:
-        pass
         return str(self.annotations.get("utterance_deception_status", "not_applicable"))
 
     def probe_text(self) -> str:
-        pass
         sep = "\n\n"
         return (
             f"{self.model_input.system_prompt}{sep}"
@@ -102,8 +88,6 @@ class TurnRecordModel(BaseModel):
 
 
 class GameRecord(BaseModel):
-    pass
-
     model_config = ConfigDict(extra="allow")
 
     schema_version: str = "2.0"

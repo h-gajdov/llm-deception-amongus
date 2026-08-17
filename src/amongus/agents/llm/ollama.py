@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import time
@@ -18,10 +16,7 @@ class OllamaError(RuntimeError):
 
 
 class OllamaClient:
-    pass
-
     def __init__(self, config: OllamaConfig) -> None:
-        pass
         self.config = config
         self.model = config.model
         self._client = httpx.Client(
@@ -30,7 +25,6 @@ class OllamaClient:
         )
 
     def chat(self, system: str, user: str) -> LLMResponse:
-        pass
         payload = self._build_payload(system, user)
         last_exc: Exception | None = None
         for attempt in range(self.config.max_retries + 1):
@@ -51,7 +45,6 @@ class OllamaClient:
         raise OllamaError(msg)
 
     def _build_payload(self, system: str, user: str) -> dict[str, object]:
-        pass
         return {
             "model": self.config.model,
             "messages": [
@@ -69,7 +62,6 @@ class OllamaClient:
         }
 
     def _post_chat(self, payload: dict[str, object]) -> LLMResponse:
-        pass
         response = self._client.post("/api/chat", json=payload)
         response.raise_for_status()
         data = response.json()
@@ -80,15 +72,12 @@ class OllamaClient:
         )
 
     def close(self) -> None:
-        pass
         self._client.close()
 
     def __enter__(self) -> OllamaClient:
-        pass
         return self
 
     def __exit__(self, *_exc: object) -> None:
-        pass
         self.close()
 
 

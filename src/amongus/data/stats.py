@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 from collections import Counter
@@ -8,14 +6,12 @@ from pathlib import Path
 
 from .ingest import iter_game_summaries
 
-                                                                    
+
 _IMPOSTOR_WIN = 1
 
 
 @dataclass
 class ExperimentStats:
-    pass
-
     name: str
     path: Path
     num_games: int = 0
@@ -26,28 +22,22 @@ class ExperimentStats:
 
 @dataclass
 class DatasetStats:
-    pass
-
     root: Path
     experiments: list[ExperimentStats] = field(default_factory=list)
 
     @property
     def total_games(self) -> int:
-        pass
         return sum(e.num_games for e in self.experiments)
 
     @property
     def total_impostor_wins(self) -> int:
-        pass
         return sum(e.impostor_wins for e in self.experiments)
 
     @property
     def total_crewmate_wins(self) -> int:
-        pass
         return sum(e.crewmate_wins for e in self.experiments)
 
     def reason_totals(self) -> Counter[str]:
-        pass
         merged: Counter[str] = Counter()
         for exp in self.experiments:
             merged.update(exp.by_reason)
@@ -55,7 +45,6 @@ class DatasetStats:
 
 
 def find_summary_files(root: str | Path) -> list[Path]:
-    pass
     root = Path(root)
     if (root / "summary.json").exists():
         return [root / "summary.json"]
@@ -63,7 +52,6 @@ def find_summary_files(root: str | Path) -> list[Path]:
 
 
 def compute_experiment_stats(summary_path: Path) -> ExperimentStats:
-    pass
     stats = ExperimentStats(name=summary_path.parent.name, path=summary_path.parent)
     for _game_index, summary in iter_game_summaries(summary_path):
         stats.num_games += 1
@@ -76,7 +64,6 @@ def compute_experiment_stats(summary_path: Path) -> ExperimentStats:
 
 
 def compute_dataset_stats(root: str | Path) -> DatasetStats:
-    pass
     root = Path(root)
     experiments = [compute_experiment_stats(p) for p in find_summary_files(root)]
     experiments.sort(key=lambda e: e.name)
@@ -84,7 +71,6 @@ def compute_dataset_stats(root: str | Path) -> DatasetStats:
 
 
 def render_stats_text(stats: DatasetStats) -> str:
-    pass
     lines = [f"Dataset 1 (game rollouts): {stats.root}", "─" * 60]
     if not stats.experiments:
         lines.append("No experiments found (looked for summary.json files).")

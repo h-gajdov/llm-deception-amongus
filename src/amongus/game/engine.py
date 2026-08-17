@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import random
@@ -34,16 +32,12 @@ logger = get_logger()
 
 STARTING_ROOM = "Cafeteria"
 
-                                                                                 
-                                                                               
-                                                 
+
 AgentFactory = Callable[[PlayerState], Agent]
 
 
 @dataclass
 class TurnRecord:
-    pass
-
     schema_version: str
     game_id: str
     turn_id: str
@@ -62,7 +56,6 @@ class TurnRecord:
     probe_regions: dict[str, list[int]]
 
     def to_dict(self) -> dict[str, object]:
-        pass
         return {
             "schema_version": self.schema_version,
             "game_id": self.game_id,
@@ -85,8 +78,6 @@ class TurnRecord:
 
 @dataclass
 class GameResult:
-    pass
-
     game_index: str
     config: GameConfig
     players: list[PlayerState]
@@ -100,8 +91,6 @@ class GameResult:
 
 
 class AmongUsGame:
-    pass
-
     def __init__(
         self,
         game_index: str,
@@ -113,7 +102,6 @@ class AmongUsGame:
         generation_config: dict[str, object] | None = None,
         seed: int | None = None,
     ) -> None:
-        pass
         self.config = config
         self.rng = rng
         self.game_map = game_map or build_skeld()
@@ -132,11 +120,7 @@ class AmongUsGame:
             [p.name for p in self.state.players], list(self.game_map.rooms)
         )
 
-                                                                          
-                    
-                                                                          
     def _init_state(self, game_index: str) -> GameState:
-        pass
         cfg = self.config
         colors = self.rng.sample(PLAYER_COLORS, cfg.num_players)
         impostor_indices = self._impostor_indices()
@@ -187,14 +171,12 @@ class AmongUsGame:
         return state
 
     def _impostor_indices(self) -> set[int]:
-        pass
         cfg = self.config
         if cfg.role_assignment == "fixed":
             return set(cfg.fixed_impostor_indices)
         return {i + 1 for i in self.rng.sample(range(cfg.num_players), cfg.num_impostors)}
 
     def _personality_pool(self, count: int) -> list[str | None]:
-        pass
         agent_cfg = self.agent_config
         if agent_cfg is None or agent_cfg.personality_mode != "sampled":
             return [None] * count
@@ -202,7 +184,6 @@ class AmongUsGame:
         return [self.rng.choice(pool) for _ in range(count)]
 
     def _seed_private_state(self, state: GameState) -> None:
-        pass
         impostor_names = [p.name for p in state.players if p.is_impostor]
         for player in state.players:
             if player.is_impostor:
@@ -210,11 +191,7 @@ class AmongUsGame:
             player.private.memory.note_own_location(player.name, player.location, 0)
             self.location_history.setdefault(player.name, []).append((0, player.location))
 
-                                                                          
-               
-                                                                          
     def run(self) -> GameResult:
-        pass
         while not self.state.finished:
             if self.state.timestep >= self.config.max_timesteps:
                 self._finish(1, WinReason.IMPOSTORS_TIME_UP)
@@ -233,7 +210,6 @@ class AmongUsGame:
         return self._build_result()
 
     def _run_task_timestep(self) -> None:
-        pass
         self._tick_cooldowns()
         for player in list(self.state.alive_players()):
             if not player.alive or self.state.finished:
@@ -245,15 +221,10 @@ class AmongUsGame:
                 return
 
     def _tick_cooldowns(self) -> None:
-        pass
         for imp in self.state.alive_impostors():
             imp.kill_cooldown_remaining = max(0, imp.kill_cooldown_remaining - 1)
 
-                                                                          
-                   
-                                                                          
     def _take_turn(self, player: PlayerState) -> bool:
-        pass
         if not player.alive:
             return False
 
@@ -287,7 +258,6 @@ class AmongUsGame:
         return triggered
 
     def _decide(self, player: PlayerState, actions: list[Action], view: PlayerView) -> Decision:
-        pass
         ctx = DecisionContext(self.state, player, actions, self.game_map, view)
         try:
             return self.agents[player.index].act(ctx)
@@ -310,7 +280,6 @@ class AmongUsGame:
     def _enforce_legality(
         self, player: PlayerState, action: Action, actions: list[Action]
     ) -> tuple[Action, ActionRejection | None]:
-        pass
         rejection = validate_action(self.state, player, action, self.game_map)
         if rejection is None:
             return action, None
@@ -318,7 +287,6 @@ class AmongUsGame:
         return safe_fallback(actions), rejection
 
     def _absorb_model_output(self, player: PlayerState, decision: Decision) -> None:
-        pass
         private = player.private
         memory_text = decision.response.get("Condensed Memory", "").strip()
         rationale = decision.response.get("Thinking Process", "").strip()
@@ -328,18 +296,13 @@ class AmongUsGame:
             private.model_rationale = rationale
 
     def _note_own_action(self, player: PlayerState, action: Action, decision: Decision) -> None:
-        pass
         label = "task phase" if self.state.phase is Phase.TASK else "meeting phase"
         rendered = action.render()
         if action.type is ActionType.SPEAK and decision.speech:
             rendered = f'SPEAK: "{decision.speech}"'
         player.private.memory.note_own_action(self.state.timestep, label, rendered)
 
-                                                                          
-                                                                       
-                                                                          
     def _apply_action(self, player: PlayerState, action: Action, decision: Decision) -> bool:
-        pass
         match action.type:
             case ActionType.MOVE:
                 self._do_move(player, action)
@@ -364,13 +327,11 @@ class AmongUsGame:
         return False
 
     def _do_vote(self, player: PlayerState, action: Action) -> None:
-        pass
         target = action.target_name or "Skip"
         player.current_vote = target
         self._emit(EventType.VOTE_CAST, actor=player.index, text=target, room=player.location)
 
     def _do_move(self, player: PlayerState, action: Action) -> None:
-        pass
         source = player.location
         dest = action.target_room or source
         player.location = dest
@@ -379,7 +340,6 @@ class AmongUsGame:
         self._notice_bodies(player)
 
     def _do_vent(self, player: PlayerState, action: Action) -> None:
-        pass
         source = player.location
         dest = action.target_room or source
         player.location = dest
@@ -388,7 +348,6 @@ class AmongUsGame:
         self._notice_bodies(player)
 
     def _do_task(self, player: PlayerState, action: Action) -> None:
-        pass
         if action.task is None:
             return
         index = player.tasks.index(action.task)
@@ -402,7 +361,6 @@ class AmongUsGame:
         )
 
     def _do_kill(self, player: PlayerState, action: Action) -> None:
-        pass
         victim = self.state.player_by_name(action.target_name or "")
         if victim is None:
             return
@@ -421,7 +379,6 @@ class AmongUsGame:
         logger.debug("{} killed {} in {}", player.name, victim.name, room)
 
     def _do_check_security(self, player: PlayerState) -> None:
-        pass
         sightings = camera_sightings(self.state, self.config.visibility, player.index)
         self._emit(
             EventType.CAMERA_CHECK,
@@ -432,7 +389,6 @@ class AmongUsGame:
         )
 
     def _do_report(self, player: PlayerState) -> bool:
-        pass
         bodies = self.state.dead_bodies.get(player.location, [])
         if not bodies:
             return False
@@ -449,21 +405,18 @@ class AmongUsGame:
         return True
 
     def _do_call_meeting(self, player: PlayerState) -> bool:
-        pass
         self.state.buttons_used += 1
         self._emit(EventType.MEETING_CALLED, actor=player.index, room=player.location)
         self.state.meeting_reason = f"{player.name} called an emergency meeting"
         return True
 
     def _do_speak(self, player: PlayerState, decision: Decision) -> None:
-        pass
         speech = (decision.speech or "").strip() or "(says nothing of note)"
         self.state.meeting_transcript.append(f"{player.name}: {speech}")
         self._emit(EventType.SPEECH, actor=player.index, room=player.location, text=speech)
         self._record_public_accusations(player, speech)
 
     def _record_public_accusations(self, speaker: PlayerState, speech: str) -> None:
-        pass
         claims = extract_claims(speech, speaker.name, self._gazetteer)
         targets = {
             c.target
@@ -474,11 +427,7 @@ class AmongUsGame:
             for listener in self.state.alive_players():
                 listener.private.memory.note_accusation(speaker.name, target)
 
-                                                                          
-                   
-                                                                          
     def _run_meeting(self) -> None:
-        pass
         self.state.phase = Phase.MEETING
         self.state.meeting_transcript = []
         self.state.meeting_round = 0
@@ -497,7 +446,6 @@ class AmongUsGame:
         self._end_meeting()
 
     def _speaking_order(self) -> list[PlayerState]:
-        pass
         alive = list(self.state.alive_players())
         order = self.config.meeting_order
         if order == "random":
@@ -511,7 +459,6 @@ class AmongUsGame:
         return alive
 
     def _run_vote(self) -> None:
-        pass
         self.state.meeting_round = self.config.discussion_rounds
         tally: Counter[str] = Counter()
         for player in self._speaking_order():
@@ -523,7 +470,6 @@ class AmongUsGame:
         self._resolve_vote(tally)
 
     def _resolve_vote(self, tally: Counter[str]) -> None:
-        pass
         summary = ", ".join(f"{name}: {votes}" for name, votes in sorted(tally.items()))
         self._emit(EventType.VOTE_RESULT, text=summary or "no votes cast", tally=dict(tally))
         if not tally:
@@ -542,7 +488,6 @@ class AmongUsGame:
         )
 
     def _end_meeting(self) -> None:
-        pass
         self.state.dead_bodies.clear()
         self.state.meeting_reason = None
         for player in self.state.players:
@@ -553,9 +498,6 @@ class AmongUsGame:
         self._phase_start_timestep = self.state.timestep
         self._check_meeting_termination()
 
-                                                                          
-                                  
-                                                                          
     def _emit(
         self,
         event_type: EventType,
@@ -569,7 +511,6 @@ class AmongUsGame:
         private_to: tuple[int, ...] = (),
         **payload: object,
     ) -> WorldEvent:
-        pass
         event = self.events.append(
             timestep=self.state.timestep,
             phase=self.state.phase,
@@ -590,7 +531,6 @@ class AmongUsGame:
         return event
 
     def _notice_bodies(self, player: PlayerState) -> None:
-        pass
         for body in self.state.dead_bodies.get(player.location, []):
             self._emit(
                 EventType.BODY_SIGHTED,
@@ -600,26 +540,20 @@ class AmongUsGame:
             )
 
     def _track_location(self, player: PlayerState) -> None:
-        pass
         self.location_history.setdefault(player.name, []).append(
             (self.state.timestep, player.location)
         )
         player.private.memory.note_own_location(player.name, player.location, self.state.timestep)
 
     def _killer_of(self, victim_name: str) -> str | None:
-        pass
         for event in self.events.of_type(EventType.KILL):
             if event.payload.get("victim_name") == victim_name:
                 return str(event.payload.get("killer_name"))
         return None
 
-                                                                          
-                
-                                                                          
     def _annotate(
         self, player: PlayerState, action: Action, decision: Decision
     ) -> UtteranceAnnotation:
-        pass
         if action.type is not ActionType.SPEAK or not decision.speech:
             return UtteranceAnnotation.not_applicable(player.role.value)
         ctx = build_context(
@@ -633,11 +567,7 @@ class AmongUsGame:
             decision.speech, player, ctx, _declared_speech(decision.declared_speech)
         )
 
-                                                                          
-                 
-                                                                          
     def _check_task_termination(self) -> bool:
-        pass
         if self._impostors_win_by_numbers():
             self._finish(1, WinReason.IMPOSTORS_OUTNUMBER)
             return True
@@ -647,7 +577,6 @@ class AmongUsGame:
         return False
 
     def _check_meeting_termination(self) -> bool:
-        pass
         if not self.state.alive_impostors():
             self._finish(0, WinReason.CREWMATES_VOTED_OUT)
             return True
@@ -657,26 +586,19 @@ class AmongUsGame:
         return False
 
     def _impostors_win_by_numbers(self) -> bool:
-        pass
         return len(self.state.alive_impostors()) >= len(self.state.alive_crewmates())
 
     def _finish(self, winner: int, reason: WinReason) -> None:
-        pass
         self.state.finished = True
         self.state.winner = winner
         self.state.winner_reason = reason.value
         logger.info("{} finished: {}", self.state.game_index, reason.value)
 
-                                                                          
-                                  
-                                                                          
     def _teleport_all(self, room: str) -> None:
-        pass
         for p in self.state.alive_players():
             p.location = room
 
     def _snapshot(self) -> int:
-        pass
         self.world_states.append(
             {
                 "game_id": self.state.game_index,
@@ -716,7 +638,6 @@ class AmongUsGame:
         before_ref: int,
         after_ref: int,
     ) -> None:
-        pass
         self.state.step += 1
         warnings = list(decision.validation_warnings)
         warnings.extend(self._contradiction_warnings(player, decision))
@@ -750,9 +671,6 @@ class AmongUsGame:
                     "raw": decision.full_response,
                     "generated_rationale": decision.response.get("Thinking Process", ""),
                     "generated_condensed_memory": decision.response.get("Condensed Memory", ""),
-                                                                          
-                                                                               
-                                                                                 
                     "action": _action_dict(action),
                     "requested_action": _requested_action_dict(decision),
                     "requested_action_text": decision.requested_action_text,
@@ -780,7 +698,6 @@ class AmongUsGame:
         )
 
     def _contradiction_warnings(self, player: PlayerState, decision: Decision) -> list[str]:
-        pass
         warnings: list[str] = []
         rationale = (decision.response.get("Thinking Process", "") or "").lower()
         speech = (decision.speech or "").lower()
@@ -806,7 +723,6 @@ class AmongUsGame:
         return warnings
 
     def _build_result(self) -> GameResult:
-        pass
         return GameResult(
             game_index=self.state.game_index,
             config=self.config,
@@ -822,7 +738,6 @@ class AmongUsGame:
 
 
 def _action_dict(action: Action) -> dict[str, object]:
-    pass
     return {
         "type": action.type.value,
         "rendered": action.render(),
@@ -834,7 +749,6 @@ def _action_dict(action: Action) -> dict[str, object]:
 
 
 def _requested_action_dict(decision: Decision) -> dict[str, object]:
-    pass
     requested = decision.requested_action
     if requested is None and decision.execution_source in ("model", "model_normalized"):
         requested = decision.action
@@ -854,19 +768,16 @@ def _requested_action_dict(decision: Decision) -> dict[str, object]:
 
 
 def _requested_valid(decision: Decision, rejection: ActionRejection | None) -> bool:
-    pass
     if not decision.requested_action_valid:
         return False
     return rejection is None or decision.execution_source not in ("model", "model_normalized")
 
 
 def _execution_source(decision: Decision, rejection: ActionRejection | None) -> str:
-    pass
     return "engine_safe_fallback" if rejection is not None else decision.execution_source
 
 
 def _fallback_reason(decision: Decision, rejection: ActionRejection | None) -> str | None:
-    pass
     if rejection is None:
         return decision.fallback_reason
     if decision.fallback_reason:
@@ -875,7 +786,6 @@ def _fallback_reason(decision: Decision, rejection: ActionRejection | None) -> s
 
 
 def _declared_speech(raw: dict[str, object] | None) -> StructuredSpeech | None:
-    pass
     if not raw:
         return None
     try:
@@ -897,7 +807,6 @@ def _declared_speech(raw: dict[str, object] | None) -> StructuredSpeech | None:
 
 
 def _around(text: str, needle: str, radius: int = 60) -> str:
-    pass
     idx = text.find(needle)
     if idx == -1:
         return ""

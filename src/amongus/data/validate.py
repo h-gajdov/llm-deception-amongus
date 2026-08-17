@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import re
@@ -15,15 +13,12 @@ from .splits import check_split_isolation, load_splits
 
 logger = get_logger()
 
-                                                                           
-                                                           
+
 MIN_DUPLICATE_LENGTH = 25
 
 
 @dataclass
 class ValidationReport:
-    pass
-
     experiment_dir: str
     metrics: dict[str, float] = field(default_factory=dict)
     distributions: dict[str, dict[str, int]] = field(default_factory=dict)
@@ -32,11 +27,9 @@ class ValidationReport:
 
     @property
     def ok(self) -> bool:
-        pass
         return not self.critical
 
     def to_dict(self) -> dict[str, object]:
-        pass
         return {
             "experiment_dir": self.experiment_dir,
             "ok": self.ok,
@@ -47,7 +40,6 @@ class ValidationReport:
         }
 
     def render(self) -> str:
-        pass
         lines = [f"Validation report for {self.experiment_dir}", "=" * 72, "", "Metrics:"]
         lines.extend(f"  {name:<44} {_fmt(value)}" for name, value in self.metrics.items())
         for name, dist in self.distributions.items():
@@ -70,7 +62,6 @@ class ValidationReport:
 
 
 def validate_experiment(experiment_dir: str | Path) -> ValidationReport:
-    pass
     directory = Path(experiment_dir)
     if not (directory / "turns.jsonl").exists():
         msg = f"No turns.jsonl under {directory}; is this a schema 2.0 experiment?"
@@ -92,13 +83,9 @@ def validate_experiment(experiment_dir: str | Path) -> ValidationReport:
     return report
 
 
-                                                                               
-                   
-                                                                               
 def _check_basics(
     report: ValidationReport, turns: list[TurnRecordModel], games: list[GameRecord]
 ) -> None:
-    pass
     per_game = Counter(t.game_id for t in turns)
     report.metrics["games"] = len(games)
     report.metrics["turns"] = len(turns)
@@ -122,7 +109,6 @@ def _check_basics(
 
 
 def _check_roles_and_speech(report: ValidationReport, turns: list[TurnRecordModel]) -> None:
-    pass
     report.distributions["role"] = dict(Counter(t.actor.role for t in turns))
     speech = [t for t in turns if t.is_speech()]
     report.metrics["spoken_utterances"] = len(speech)
@@ -131,7 +117,6 @@ def _check_roles_and_speech(report: ValidationReport, turns: list[TurnRecordMode
 
 
 def _check_annotations(report: ValidationReport, turns: list[TurnRecordModel]) -> None:
-    pass
     speech = [t for t in turns if t.is_speech()]
     statuses = Counter(t.deception_status() for t in speech)
     report.distributions["utterance_deception_status"] = dict(statuses)
@@ -149,9 +134,7 @@ def _check_annotations(report: ValidationReport, turns: list[TurnRecordModel]) -
             claims_total += 1
             if claim.get("resolution") != "resolved":
                 unresolved += 1
-                                                                            
-                                                                               
-                                                            
+
             if claim.get("deception_type") and claim.get("deception_intent") is True:
                 subtypes[str(claim["deception_type"])] += 1
     report.distributions["deception_subtype"] = dict(subtypes)
@@ -183,7 +166,6 @@ def _check_annotations(report: ValidationReport, turns: list[TurnRecordModel]) -
 
 
 def _check_kills(report: ValidationReport, directory: Path, turns: list[TurnRecordModel]) -> None:
-    pass
     del directory
     witnessed = 0
     unwitnessed = 0
@@ -193,8 +175,7 @@ def _check_kills(report: ValidationReport, directory: Path, turns: list[TurnReco
         if str(action.get("type", "")).upper() != "KILL":
             continue
         kills += 1
-                                                                               
-                                                                             
+
         if _kill_was_witnessed(turns, turn):
             witnessed += 1
         else:
@@ -205,7 +186,6 @@ def _check_kills(report: ValidationReport, directory: Path, turns: list[TurnReco
 
 
 def _kill_was_witnessed(turns: list[TurnRecordModel], kill_turn: TurnRecordModel) -> bool:
-    pass
     killer = kill_turn.actor.player_id
     for turn in turns:
         if turn.game_id != kill_turn.game_id or turn.step <= kill_turn.step:
@@ -224,7 +204,6 @@ def _kill_was_witnessed(turns: list[TurnRecordModel], kill_turn: TurnRecordModel
 
 
 def _check_leakage(report: ValidationReport, turns: list[TurnRecordModel]) -> None:
-    pass
     engine_reported = 0
     derived: Counter[str] = Counter()
     for turn in turns:
@@ -244,23 +223,19 @@ def _check_leakage(report: ValidationReport, turns: list[TurnRecordModel]) -> No
 
 
 def _derive_leakage(turn: TurnRecordModel) -> list[str]:
-    pass
     codes: list[str] = []
     prompt = f"{turn.model_input.system_prompt}\n{turn.model_input.user_prompt}"
     sections = turn.model_input.sections or {}
 
-                                                                     
     for token in ("deception_intent", "world_truth", "speaker_knows", "role_label"):
         if token in prompt:
             codes.append("evaluator_metadata_in_prompt")
             break
 
-                                                       
     role_block = str(sections.get("role_private_context", ""))
     if turn.actor.role.lower() != "impostor" and "fellow impostors" in role_block.lower():
         codes.append("crewmate_told_impostors")
 
-                                                                               
     observed = {
         str(o.get("text", ""))
         for o in (turn.private_state.get("direct_observations") or [])
@@ -272,8 +247,6 @@ def _derive_leakage(turn: TurnRecordModel) -> list[str]:
             codes.append("unperceived_observation_line")
             break
 
-                                                                            
-                                                                           
     if _names_a_killer(witnessed_block) and not any(
         o.get("event_type") == "kill"
         for o in (turn.private_state.get("direct_observations") or [])
@@ -283,15 +256,10 @@ def _derive_leakage(turn: TurnRecordModel) -> list[str]:
     return codes
 
 
-                                                                              
-                                                                            
-                                                                               
-                                 
 _KILL_ATTRIBUTION_RE = re.compile(r"You saw\s+\S.*?\s+kill\b|killed by\s+Player\b", re.IGNORECASE)
 
 
 def _content_lines(block: str) -> list[str]:
-    pass
     return [
         line.strip()
         for line in block.splitlines()[1:]
@@ -300,7 +268,6 @@ def _content_lines(block: str) -> list[str]:
 
 
 def _names_a_killer(block: str) -> bool:
-    pass
     return any(
         _KILL_ATTRIBUTION_RE.search(line) and "could not tell" not in line.lower()
         for line in _content_lines(block)
@@ -308,12 +275,10 @@ def _names_a_killer(block: str) -> bool:
 
 
 def _strip_timestamp(line: str) -> str:
-    pass
     return re.sub(r"^\[t=\d+\]\s*", "", line.strip())
 
 
 def _check_actions_and_parsing(report: ValidationReport, turns: list[TurnRecordModel]) -> None:
-    pass
     invalid = [t for t in turns if t.evaluation.get("action_valid") is False]
     report.metrics["invalid_actions"] = len(invalid)
     report.metrics["invalid_action_pct"] = 100.0 * len(invalid) / len(turns) if turns else 0.0
@@ -321,15 +286,13 @@ def _check_actions_and_parsing(report: ValidationReport, turns: list[TurnRecordM
         Counter(str((t.evaluation.get("rejection") or {}).get("code", "unknown")) for t in invalid)
     )
     report.distributions["parse_status"] = dict(Counter(t.model_output.parse_status for t in turns))
-                                                                         
-                                                                               
+
     failures = sum(1 for t in turns if t.model_output.parse_status in ("fallback", "recovered"))
     report.metrics["parser_failures"] = failures
     report.metrics["parser_failure_pct"] = 100.0 * failures / len(turns) if turns else 0.0
     normalized = sum(1 for t in turns if t.model_output.parse_status == "normalized")
     report.metrics["actions_matched_after_normalization"] = normalized
 
-                                                                              
     report.distributions["execution_source"] = dict(
         Counter(t.model_output.execution_source for t in turns)
     )
@@ -349,9 +312,7 @@ def _check_actions_and_parsing(report: ValidationReport, turns: list[TurnRecordM
         for warning in turn.annotations.get("validation_warnings", []) or []:
             warnings[str(warning)] += 1
     report.distributions["validation_warning"] = dict(warnings)
-                                                                           
-                                                                         
-                                             
+
     report.metrics["contradictory_teammate_references"] = warnings[
         "rationale_calls_known_teammate_a_crewmate"
     ]
@@ -364,7 +325,6 @@ def _check_actions_and_parsing(report: ValidationReport, turns: list[TurnRecordM
 
 
 def _check_memory(report: ValidationReport, turns: list[TurnRecordModel]) -> None:
-    pass
     empty = 0
     for turn in turns:
         memory = turn.private_state.get("structured_memory") or {}
@@ -381,8 +341,7 @@ def _check_memory(report: ValidationReport, turns: list[TurnRecordModel]) -> Non
             empty += 1
     report.metrics["records_with_empty_memory"] = empty
     report.metrics["records_with_empty_memory_pct"] = 100.0 * empty / len(turns) if turns else 0.0
-                                                                                
-                         
+
     if turns and empty / len(turns) > 0.35:
         report.warnings.append(
             f"{100 * empty / len(turns):.0f}% of records have an empty derived memory."
@@ -390,7 +349,6 @@ def _check_memory(report: ValidationReport, turns: list[TurnRecordModel]) -> Non
 
 
 def _check_duplicates(report: ValidationReport, turns: list[TurnRecordModel]) -> None:
-    pass
     utterances = [
         (t.model_output.speech or "").strip()
         for t in turns
@@ -410,7 +368,6 @@ def _check_duplicates(report: ValidationReport, turns: list[TurnRecordModel]) ->
 
 
 def _check_splits(report: ValidationReport, directory: Path, turns: list[TurnRecordModel]) -> None:
-    pass
     assignment = load_splits(directory)
     if assignment is None:
         report.metrics["splits_defined"] = 0
@@ -433,12 +390,10 @@ def _check_splits(report: ValidationReport, directory: Path, turns: list[TurnRec
 
 
 def _fmt(value: float) -> str:
-    pass
     return str(int(value)) if float(value).is_integer() else f"{value:.2f}"
 
 
 def validate_world_states(experiment_dir: str | Path) -> int:
-    pass
     return sum(1 for _ in iter_world_states(experiment_dir))
 
 

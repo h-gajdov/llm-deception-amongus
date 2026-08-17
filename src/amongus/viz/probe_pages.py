@@ -1,5 +1,3 @@
-
-
 from __future__ import annotations
 
 import json
@@ -18,26 +16,16 @@ RESULTS_FILE = "results.json"
 
 @dataclass(frozen=True)
 class SuiteView:
-    pass
-
     label: str
     sources: tuple[str, ...]
 
 
-                                                                              
-                                                                            
-                                                                                
-                                                                          
 SUITE_VIEWS: tuple[SuiteView, ...] = (
     SuiteView("eval_pooling_20", ("eval_suite", "eval_suite_gpt2_last20")),
     SuiteView("eval_pooling_last", ("eval_suite_polling_last",)),
 )
 
-                                                                             
-                                                                      
-                                                                             
-                                                                              
-                                                              
+
 SUITE_DATASETS: tuple[str, ...] = (
     "2025-02-01_llama_llama_100_games_v3",
     "2025-02-01_llama_phi_100_games_v3",
@@ -50,30 +38,19 @@ SUITE_DATASETS: tuple[str, ...] = (
     "mixed_qwen3_gemma4_100_games",
 )
 
-                                                                                
-                                                                           
+
 _COMPARABILITY_KEYS = ("label_source", "text_mode", "apply_chat_template", "speak_only")
 
-                                                                            
-                                                                               
-                                                                       
-                                                                            
-                                       
- 
-                                                                               
-                                                                               
-                                                                       
-                                                                               
-                                                                  
+
 PALETTE_LIGHT = [
-    "#2a78d6",        
-    "#eb6834",          
-    "#0d8a2f",         
-    "#6a55d6",          
-    "#d1568c",           
-    "#1baf7a",        
-    "#c99000",          
-    "#cc2255",           
+    "#2a78d6",
+    "#eb6834",
+    "#0d8a2f",
+    "#6a55d6",
+    "#d1568c",
+    "#1baf7a",
+    "#c99000",
+    "#cc2255",
 ]
 PALETTE_DARK = [
     "#6aa9f2",
@@ -86,18 +63,15 @@ PALETTE_DARK = [
     "#ff5f7a",
 ]
 
-                                                                               
+
 METRIC_KEYS = ("accuracy", "f1", "auroc")
 
-                                                                               
-                                                                            
-                                                    
+
 _DATE_PREFIX = re.compile(r"^\d{4}-\d{2}-\d{2}[_-]")
 _GAMES_SUFFIX = re.compile(r"_\d+_games(_v\d+)?$")
 
 
 def collect_probe_pages(probes_dir: str | Path) -> dict[str, Any] | None:
-    pass
     root = Path(probes_dir)
     if not root.is_dir():
         logger.info("No probe directory at {}; the site's probe pages are omitted.", root)
@@ -117,10 +91,6 @@ def collect_probe_pages(probes_dir: str | Path) -> dict[str, Any] | None:
             if suite is not None:
                 runs[child.name] = suite
 
-                                                                                 
-                                                                                
-                                                                            
-                                                                       
     viewed = {name for spec in SUITE_VIEWS for name in spec.sources}
     slots = _slots(training, {name: run for name, run in runs.items() if name in viewed})
     suites = [view for spec in SUITE_VIEWS if (view := _build_view(spec, runs, slots)) is not None]
@@ -146,11 +116,7 @@ def collect_probe_pages(probes_dir: str | Path) -> dict[str, Any] | None:
     }
 
 
-                                                                               
-               
-                                                                               
 def _read_training(folder: Path) -> dict[str, Any] | None:
-    pass
     metrics = _load_json(folder / METRICS_FILE)
     if metrics is None:
         return None
@@ -187,10 +153,6 @@ def _read_training(folder: Path) -> dict[str, Any] | None:
         "dataset_dir": config.get("dataset_dir"),
         "layers": layers,
         "series": series,
-                                                                            
-                                                                              
-                                                                           
-                                         
         "best_layer": best_layer,
         "best": {key: _number(selected.get(key)) for key in METRIC_KEYS} if selected else None,
         "peaks": {key: _peak(layers, series[key]) for key in METRIC_KEYS},
@@ -198,7 +160,6 @@ def _read_training(folder: Path) -> dict[str, Any] | None:
 
 
 def _peak(layers: list[int], values: list[float | None]) -> dict[str, Any] | None:
-    pass
     pairs = [(v, layer) for layer, v in zip(layers, values, strict=True) if v is not None]
     if not pairs:
         return None
@@ -207,7 +168,6 @@ def _peak(layers: list[int], values: list[float | None]) -> dict[str, Any] | Non
 
 
 def _quantization(block: dict[str, Any]) -> str:
-    pass
     if block.get("load_in_4bit"):
         return f"4-bit {block.get('bnb_4bit_quant_type', 'nf4')}"
     if block.get("load_in_8bit"):
@@ -215,11 +175,7 @@ def _quantization(block: dict[str, Any]) -> str:
     return "none"
 
 
-                                                                               
-             
-                                                                               
 def _slots(training: list[dict[str, Any]], runs: dict[str, dict[str, Any]]) -> dict[str, int]:
-    pass
     names: list[str] = [run["name"] for run in training]
     for suite in runs.values():
         names.extend(probe["name"] for probe in suite["probes"])
@@ -229,7 +185,6 @@ def _slots(training: list[dict[str, Any]], runs: dict[str, dict[str, Any]]) -> d
 def _build_view(
     spec: SuiteView, runs: dict[str, dict[str, Any]], slots: dict[str, int]
 ) -> dict[str, Any] | None:
-    pass
     parts = [(name, runs[name]) for name in spec.sources if name in runs]
     missing = [name for name in spec.sources if name not in runs]
     if missing:
@@ -237,8 +192,6 @@ def _build_view(
     if not parts:
         return None
 
-                                                                               
-                                                                  
     merged: dict[tuple[str, str, str], dict[str, Any]] = {}
     origin: dict[str, str] = {}
     for source, suite in parts:
@@ -291,9 +244,6 @@ def _build_view(
                 "layer": meta.get(name, {}).get("layer"),
                 "pooling_tokens": meta.get(name, {}).get("pooling_tokens"),
                 "source": origin.get(name),
-                                                                                
-                                                                                
-                                                                               
                 "settings_diff": _settings_diff(base_settings, origin.get(name), parts),
             }
             for name in probes
@@ -305,7 +255,6 @@ def _build_view(
 def _settings_diff(
     base: dict[str, Any], source: str | None, parts: list[tuple[str, dict[str, Any]]]
 ) -> dict[str, Any]:
-    pass
     settings = next((suite["settings"] for name, suite in parts if name == source), None)
     if settings is None:
         return {}
@@ -317,7 +266,6 @@ def _settings_diff(
 
 
 def _read_suite(folder: Path) -> dict[str, Any] | None:
-    pass
     report = _load_json(folder / RESULTS_FILE)
     if report is None:
         return None
@@ -326,8 +274,6 @@ def _read_suite(folder: Path) -> dict[str, Any] | None:
         logger.warning("Skipping suite {}: {} holds no rows.", folder.name, RESULTS_FILE)
         return None
 
-                                                                              
-                                     
     probes = _ordered(rows, "probe", report.get("probes"))
     meta = {str(r["probe"]): r for r in rows}
     return {
@@ -348,7 +294,6 @@ def _read_suite(folder: Path) -> dict[str, Any] | None:
 
 
 def _trim_row(row: dict[str, Any]) -> dict[str, Any]:
-    pass
     keys = (
         "dataset",
         "probe",
@@ -377,7 +322,6 @@ def _trim_row(row: dict[str, Any]) -> dict[str, Any]:
 
 
 def _ordered(rows: list[dict[str, Any]], key: str, declared: object) -> list[str]:
-    pass
     order = [str(name) for name in declared] if isinstance(declared, list) else []
     seen = set(order)
     for row in rows:
@@ -390,7 +334,6 @@ def _ordered(rows: list[dict[str, Any]], key: str, declared: object) -> list[str
 
 
 def _labels(names: list[str]) -> dict[str, str]:
-    pass
     short = {name: _GAMES_SUFFIX.sub("", _DATE_PREFIX.sub("", name)) or name for name in names}
     counts: dict[str, int] = {}
     for label in short.values():
@@ -401,11 +344,7 @@ def _labels(names: list[str]) -> dict[str, str]:
     }
 
 
-                                                                               
-        
-                                                                               
 def _load_json(path: Path) -> dict[str, Any] | None:
-    pass
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -418,7 +357,6 @@ def _load_json(path: Path) -> dict[str, Any] | None:
 
 
 def _number(value: object) -> float | None:
-    pass
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
     return float(value)
